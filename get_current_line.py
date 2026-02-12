@@ -91,12 +91,10 @@ def write_atomic(path: Path, content: str) -> None:
 
 
 def main() -> None:
-    outpath = Path(OUTFILE)
-
     try:
         while True:
             try:
-                write_atomic(outpath, json.dumps(asdict(get_program_info(HOST, PORT)), indent=2, ensure_ascii=False))
+                write_atomic(Path(OUTFILE), json.dumps(asdict(get_program_info(HOST, PORT)), indent=2, ensure_ascii=False))
             except Exception as e:
                 print(e)
             time.sleep(max(0.1, float(POLL_INTERVAL)))
