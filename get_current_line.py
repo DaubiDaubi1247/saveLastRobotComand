@@ -3,62 +3,63 @@ import argparse
 import json
 import socket
 import sys
+from typing import Any, Dict, List, Optional, Union
 
-def request(command, client, timeout=3):
-    if not command.endswith('\n'):
-        command += '\n'
-    client.send(command.encode())
-    resp = b''
+def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], List[Any], str]:
+    if not command.endswith("\n"):
+        command += "\n"
     client.settimeout(timeout)
+    client.send(command.encode())
+    resp = bytearray()
     while True:
         chunk = client.recv(4096)
         if not chunk:
             break
-        resp += chunk
-        if resp.endswith(b'\n'):
+        resp.extend(chunk)
+        if resp.endswith(b"\n"):
             break
+    text = resp.decode("utf-8", errors="ignore").strip()
     try:
-        return json.loads(resp)
-    except Exception:
-        return resp.decode('utf-8', errors='ignore')
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
 
-def get_program_and_line(addr, port, timeout=3):
-    """Return program name read from $PRO_IP (string or None)."""
-    client = socket.socket()
-    client.settimeout(timeout)
-    client.connect((addr, port))
-    msg = "{'method':'Var_ShowVar','params':['$PRO_IP'],'id':1}\n"
-    try:
+
+def get_program_info(addr: str, port: int, timeout: float = 3.0) -> Optional[str]:
+    msg = json.dumps({"method": "Var_ShowVar", "params": ["$PRO_IP"], "id": 1}) + "\n"
+    with socket.create_connection((addr, port), timeout) as client:
         r = request(msg, client, timeout)
-    finally:
-        try:
-            client.close()
-        except Exception:
-            pass
+
     if isinstance(r, (list, dict)):
         sval = json.dumps(r, ensure_ascii=False)
     else:
         sval = str(r)
     sval = sval.strip()
-    return sval or None
+    return sval
 
-def main():
-    p = argparse.ArgumentParser(description='Get current executing program name from KRC4 via KUKAVARPROXY')
-    p.add_argument('--host', default="192.168.6.139", help='Robot IP address')
-    p.add_argument('--port', type=int, default=3333, help='KUKAVARPROXY port (default 3333)')
+
+def main() -> None:
+    p = argparse.ArgumentParser(
+        description="Get current executing program name from KRC4 via KUKAVARPROXY"
+    )
+    p.add_argument("--host", default="192.168.6.139", help="Robot IP address")
+    p.add_argument(
+        "--port", type=int, default=3333, help="KUKAVARPROXY port (default 3333)"
+    )
     args = p.parse_args()
 
     try:
-        prog = get_program_and_line(args.host, args.port)
+        prog = get_program_info(args.host, args.port)
     except Exception as e:
-        print('ERROR: communication failed:', e, file=sys.stderr)
+        print("ERROR: communication failed:", e, file=sys.stderr)
         sys.exit(2)
 
     if prog is None:
-        print('Could not read $PRO_IP from robot.')
+        print("Could not read $PRO_IP from robot.")
         sys.exit(1)
 
     print(prog)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
