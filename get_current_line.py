@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-import argparse
 import json
 import socket
-import sys
+import time
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
+
+POLL_INTERVAL = 5.0  # seconds between polls when running continuously
+OUTFILE = "last_program.txt"  # file to write last program name to
+HOST = "192.168.6.139"
+PORT = 3333
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], List[Any], str]:
     if not command.endswith("\n"):
@@ -37,28 +43,27 @@ def get_program_info(addr: str, port: int, timeout: float = 3.0) -> Optional[str
     sval = sval.strip()
     return sval
 
+def write_atomic(path: Path, content: str) -> None:
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, path)
+
 
 def main() -> None:
-    p = argparse.ArgumentParser(
-        description="Get current executing program name from KRC4 via KUKAVARPROXY"
-    )
-    p.add_argument("--host", default="192.168.6.139", help="Robot IP address")
-    p.add_argument(
-        "--port", type=int, default=3333, help="KUKAVARPROXY port (default 3333)"
-    )
-    args = p.parse_args()
+    outpath = Path(OUTFILE)
 
     try:
-        prog = get_program_info(args.host, args.port)
-    except Exception as e:
-        print("ERROR: communication failed:", e, file=sys.stderr)
-        sys.exit(2)
-
-    if prog is None:
-        print("Could not read $PRO_IP from robot.")
-        sys.exit(1)
-
-    print(prog)
+        while True:
+            try:
+                prog = get_program_info(HOST, PORT)
+            except Exception as e:
+                write_atomic(outpath, f"ERROR: {e}\n")
+            else:
+                write_atomic(outpath, (prog or "").strip())
+            time.sleep(max(0.1, float(POLL_INTERVAL)))
+    except KeyboardInterrupt:
+        print("Interrupted, exiting.")
+        return
 
 
 if __name__ == "__main__":
