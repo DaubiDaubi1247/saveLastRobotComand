@@ -7,11 +7,17 @@ import re
 from pathlib import Path
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Union
+from telegraf.client import TelegrafClient
 
 POLL_INTERVAL = 1.0
 OUTFILE = "last_program.txt"
-HOST = "192.168.6.139"
+HOST = "192.168.6.158"
 PORT = 3333
+
+# Telegraf/InfluxDB configuration
+TELEGRAF_HOST = "192.168.22.11"
+TELEGRAF_PORT = 8092
+ROBOT_TAG = "pilot_krc4"
 
 @dataclass
 class ProgramInfo:
@@ -90,11 +96,30 @@ def write_atomic(path: Path, content: str) -> None:
     os.replace(tmp, path)
 
 
+def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: str) -> bool:
+    try:
+        data = {
+            "snr_c_trl": info.snr_c_trl if info.snr_c_trl is not None else 0,
+            "program_name": info.name_c_trl if info.name_c_trl is not None else "",
+        }
+        tg_client.metric("program_info", data, tags={"robot": robot_tag})
+        print("send" + str(data))
+        return True
+    except Exception as e:
+        print(f"Error sending to telegraf: {e}")
+        return False
+
+
 def main() -> None:
+    tg_client = TelegrafClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT)
     try:
         while True:
             try:
-                write_atomic(Path(OUTFILE), json.dumps(asdict(get_program_info(HOST, PORT)), indent=2, ensure_ascii=False))
+                info = get_program_info(HOST, PORT)
+                data = asdict(get_program_info(HOST, PORT))
+                # remove when complete sending to telegraf
+                write_atomic(Path(OUTFILE), json.dumps(data, indent=2, ensure_ascii=False))
+                send_to_telegraf(tg_client, info, ROBOT_TAG)
             except Exception as e:
                 print(e)
             time.sleep(max(0.1, float(POLL_INTERVAL)))
