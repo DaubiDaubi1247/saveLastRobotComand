@@ -10,14 +10,29 @@ from typing import Any, Dict, List, Optional, Union
 from telegraf.client import TelegrafClient
 
 POLL_INTERVAL = 1.0
-OUTFILE = "last_program.txt"
-HOST = "192.168.6.158"
-PORT = 3333
 
 # Telegraf/InfluxDB configuration
 TELEGRAF_HOST = "192.168.22.11"
 TELEGRAF_PORT = 8092
-ROBOT_TAG = "pilot_krc4"
+
+robots = {
+    'W8R1': ('10.1.0.82', 3333, 2000, 'W8R1'),
+    'W8R2': ('10.1.0.84', 3333, 2000, 'W8R2'),
+    'W8R3': ('10.1.0.86', 3333, 2000, 'W8R3'),
+    'W8R4': ('10.1.0.88', 3333, 2000, 'W8R4'),
+    'W1R1': ('10.1.0.14', 3333, 2000, 'W1R1'),
+    'W1R2': ('10.1.0.16', 3333, 2000, 'W1R2'),
+    'W2R1': ('10.1.0.44', 3333, 2000, 'W2R1'),
+    'W2R2': ('10.1.0.46', 3333, 2000, 'W2R2'),
+    'W1x4R1': ('10.1.0.32', 4444, 2000, 'W1x4R1'),
+    'W1x4R2': ('10.1.0.34', 3333, 2000, 'W1x4R2'),
+    'W1x4R3': ('10.1.0.36', 4444, 2000, 'W1x4R3'),
+    'W1x4R4': ('10.1.0.38', 3333, 2000, 'W1x4R4'),
+    'W8R5': ('10.1.0.117', 3333, 2000, 'W8R5'),
+    'W7R1': ('10.1.0.71', 3333, 2000, 'W7R1'),
+    'W1R7': ('10.1.0.18', 3333, 2000, 'W1R7'),
+    'W2R6': ('10.1.0.26', 3333, 2000, 'W2R6')
+}
 
 @dataclass
 class ProgramInfo:
@@ -96,7 +111,7 @@ def write_atomic(path: Path, content: str) -> None:
     os.replace(tmp, path)
 
 
-def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: str) -> bool:
+def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: str):
     try:
         data = {
             "snr_c_trl": info.snr_c_trl if info.snr_c_trl is not None else 0,
@@ -104,24 +119,21 @@ def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: st
         }
         tg_client.metric("program_info", data, tags={"robot": robot_tag})
         print("send" + str(data))
-        return True
     except Exception as e:
         print(f"Error sending to telegraf: {e}")
-        return False
 
 
 def main() -> None:
     tg_client = TelegrafClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT)
+
     try:
         while True:
-            try:
-                info = get_program_info(HOST, PORT)
-                data = asdict(get_program_info(HOST, PORT))
-                # remove when complete sending to telegraf
-                write_atomic(Path(OUTFILE), json.dumps(data, indent=2, ensure_ascii=False))
-                send_to_telegraf(tg_client, info, ROBOT_TAG)
-            except Exception as e:
-                print(e)
+            for key, tup in robots.items():
+                try:
+                    info = get_program_info(tup[0], int(tup[1]))
+                    send_to_telegraf(tg_client, info, tup[3])
+                except Exception as e:
+                    print(f"{key}:", e)
             time.sleep(max(0.1, float(POLL_INTERVAL)))
     except KeyboardInterrupt:
         print("Interrupted, exiting.")
