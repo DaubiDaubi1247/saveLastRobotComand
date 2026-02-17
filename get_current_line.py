@@ -5,7 +5,7 @@ import time
 import os
 import re
 from pathlib import Path
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 from telegraf.client import TelegrafClient
 
