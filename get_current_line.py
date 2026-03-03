@@ -112,10 +112,12 @@ def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: st
 def main() -> None:
     tg_client = TelegrafClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT)
     while True:
-        for tup in robots.values():
-            send_to_telegraf(tg_client, get_program_info(tup[0], int(tup[1])), tup[3])
-        time.sleep(POLL_INTERVAL)
-
+        for key, tup in robots.items():
+            try:
+                send_to_telegraf(tg_client, get_program_info(tup[0], int(tup[1])), tup[3])
+            except Exception as e:
+                print(f"{key}:", e)
+        time.sleep(max(0.1, float(POLL_INTERVAL)))
 
 if __name__ == "__main__":
     main()
