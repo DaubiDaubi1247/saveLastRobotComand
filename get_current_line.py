@@ -43,7 +43,6 @@ class ProgramInfo:
     i_executed: Optional[bool] = None
     p_arrived: Optional[int] = None
 
-
 def parse_pro_ip_result(result_str: str) -> ProgramInfo:
     s = result_str.strip()
     if s.startswith("{PRO_IP:") and s.endswith("}"):
@@ -88,7 +87,6 @@ def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[
     except json.JSONDecodeError:
         return text
 
-
 def get_program_info(addr: str, port: int, timeout: float = 3.0) -> ProgramInfo:
     msg = json.dumps({"method": "Var_ShowVar", "params": ["$PRO_IP"], "id": 1}) + "\n"
     with socket.create_connection((addr, port), timeout) as client:
@@ -103,30 +101,20 @@ def get_program_info(addr: str, port: int, timeout: float = 3.0) -> ProgramInfo:
     
     return parse_pro_ip_result(result_str)
 
-
 def send_to_telegraf(tg_client: TelegrafClient, info: ProgramInfo, robot_tag: str):
-    try:
-        data = {
-            "snr_c_trl": info.snr_c_trl if info.snr_c_trl is not None else 0,
-            "program_name": info.name_c_trl if info.name_c_trl is not None else None,
-        }
-        tg_client.metric("program_info", data, tags={"robot": robot_tag})
-        print("send" + str(data))
-    except Exception as e:
-        print(f"Error sending to telegraf: {e}")
-
+    data = {
+        "snr_c_trl": info.snr_c_trl if info.snr_c_trl is not None else 0,
+        "program_name": info.name_c_trl if info.name_c_trl is not None else None,
+    }
+    tg_client.metric("program_info", data, tags={"robot": robot_tag})
+    print("send " + robot_tag +" " + str(data))
 
 def main() -> None:
     tg_client = TelegrafClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT)
-
-    try:
-        while True:
-            for tup in robots.items():
-                send_to_telegraf(tg_client, get_program_info(tup[0], int(tup[1])), tup[3])
-            time.sleep(POLL_INTERVAL)
-    except KeyboardInterrupt:
-        print("Interrupted, exiting.")
-        return
+    while True:
+        for tup in robots.values():
+            send_to_telegraf(tg_client, get_program_info(tup[0], int(tup[1])), tup[3])
+        time.sleep(POLL_INTERVAL)
 
 
 if __name__ == "__main__":
