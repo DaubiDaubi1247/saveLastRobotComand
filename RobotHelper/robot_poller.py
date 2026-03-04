@@ -4,7 +4,7 @@ import json
 import socket
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Dict, Optional, Tuple
 from telegraf.client import TelegrafClient
 from robot_connector import request
 

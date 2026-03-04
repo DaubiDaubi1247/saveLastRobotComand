@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import socket
+import os
 from typing import Any, Dict, List, Optional, Union
 
 
@@ -60,7 +61,13 @@ class RobotConnector:
         r = self._send_request(msg)
 
         if isinstance(r, dict) and "result" in r:
-            self._file_list = r["result"] if isinstance(r["result"], list) else []
+            result = r["result"]
+            if isinstance(result, dict):
+                self._file_list = list(result.keys())
+            elif isinstance(result, list):
+                self._file_list = result
+            else:
+                self._file_list = []
         else:
             self._file_list = []
 
@@ -70,9 +77,45 @@ class RobotConnector:
     def file_list(self) -> List[str]:
         return self._file_list
 
+    def _copy_file_to_mem(self, file_path: str) -> Optional[str]:
+        msg = json.dumps({
+            "method": "File_CopyFile2Mem",
+            "params": [file_path],
+            "id": 1
+        }) + "\n"
+        r = self._send_request(msg)
+        if isinstance(r, dict) and "result" in r:
+            return r["result"]
+        return None
+
+    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files") -> List[str]:
+        if not self._file_list:
+            self.get_file_list(directory)
+
+        os.makedirs(output_dir, exist_ok=True)
+        saved_files: List[str] = []
+
+        for file_name in self._file_list:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            print(content)
+            if content is not None:
+                local_path = os.path.join(output_dir, file_name)
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                saved_files.append(file_name)
+
+        return saved_files
+
     def __enter__(self):
         self.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self):
         self.disconnect()
+
+r = RobotConnector(addr="192.168.6.191", port=3333)
+r.connect()
+r.authenticate()
+r.get_file_list()
+r.copy_files_to_local()
