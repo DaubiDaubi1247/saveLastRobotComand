@@ -2,11 +2,13 @@
 """Основной модуль: REST API сервер + фоновый опрос роботов"""
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
 from robot_poller import poll_robots
+from robot_state_service import RobotStateService
+from robot_state_repository import RobotStateRepository
 
 # Server configuration
 SERVER_HOST = "0.0.0.0"
@@ -26,11 +28,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # FastAPI приложение
-app = FastAPI(title="Robot Server", lifespan=lifespan)
+app = FastAPI(title="Robot Server")
 
 
 class RequestData(BaseModel):
     data: Optional[Dict[str, Any]] = None
+
+
+class RobotStateResponse(BaseModel):
+    workshop: str
+    robot: str
 
 
 @app.get("/health")
@@ -39,20 +46,13 @@ async def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
-@app.api_route("/api/{endpoint:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-async def api_endpoint(endpoint: str, request: Request) -> Dict[str, Any]:
-    """Обработчик REST API запросов"""
-    try:
-        body: Dict[str, Any] = await request.json()
-    except Exception:
-        body = {}
-
-    return {
-        "status": "ok",
-        "endpoint": endpoint,
-        "method": request.method,
-        "data": body
-    }
+@app.get("/robots", response_model=List[RobotStateResponse])
+async def get_robots() -> List[RobotStateResponse]:
+    """Получить состояние всех роботов"""
+    repository = RobotStateRepository()
+    service = RobotStateService(repository)
+    states = service.get_all_robots_state()
+    return [RobotStateResponse(workshop=s.workshop, robot=s.robot) for s in states]
 
 
 def main() -> None:
