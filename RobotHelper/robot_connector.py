@@ -3,6 +3,7 @@ import json
 import socket
 import os
 from typing import Any, Dict, List, Optional, Union
+from file_content_processor import FileContentProcessor
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -33,6 +34,7 @@ class RobotConnector:
         self._timeout = timeout
         self._client: Optional[socket.socket] = None
         self._file_list: List[str] = []
+        self._processor = FileContentProcessor()
 
     def connect(self) -> None:
         self._client = socket.create_connection((self._addr, self._port), self._timeout)
@@ -99,6 +101,8 @@ class RobotConnector:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
+                if self._processor.should_process(file_name):
+                    content = self._processor.process_dat_content(content)
                 local_path = os.path.join(output_dir, file_name)
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
@@ -112,3 +116,9 @@ class RobotConnector:
 
     def __exit__(self):
         self.disconnect()
+
+r = RobotConnector(addr="192.168.6.191", port=3333)
+r.connect()
+r.authenticate()
+r.get_file_list()
+r.copy_files_to_local()
