@@ -4,8 +4,9 @@ import json
 import socket
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union, Tuple
+from typing import Dict, Optional, Tuple
 from telegraf.client import TelegrafClient
+from robot_connector import request
 
 POLL_INTERVAL = 15
 
@@ -68,26 +69,6 @@ def parse_pro_ip_result(result_str: str) -> ProgramInfo:
         i_executed=i_executed_match.group(1).upper() == "TRUE" if i_executed_match else None,
         p_arrived=int(p_arrived_match.group(1)) if p_arrived_match else None,
     )
-
-
-def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
-    if not command.endswith("\n"):
-        command += "\n"
-    client.settimeout(timeout)
-    client.send(command.encode())
-    resp = bytearray()
-    while True:
-        chunk = client.recv(4096)
-        if not chunk:
-            break
-        resp.extend(chunk)
-        if resp.endswith(b"\n"):
-            break
-    text = resp.decode("utf-8", errors="ignore").strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return text
 
 
 def get_program_info(addr: str, port: int, timeout: float = 3.0) -> ProgramInfo:

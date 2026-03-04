@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+import json
+import socket
+import os
+from typing import Any, Dict, List, Optional, Union
+
+
+def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
+    if not command.endswith("\n"):
+        command += "\n"
+    client.settimeout(timeout)
+    client.send(command.encode())
+    resp = bytearray()
+    while True:
+        chunk = client.recv(4096)
+        if not chunk:
+            break
+        resp.extend(chunk)
+        if resp.endswith(b"\n"):
+            break
+    text = resp.decode("utf-8", errors="ignore").strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+class RobotConnector:
+
+    def __init__(self, addr: str, port: int, timeout: float = 3.0):
+        self._addr = addr
+        self._port = port
+        self._timeout = timeout
+        self._client: Optional[socket.socket] = None
+        self._file_list: List[str] = []
+
+    def connect(self) -> None:
+        self._client = socket.create_connection((self._addr, self._port), self._timeout)
+
+    def disconnect(self) -> None:
+        if self._client:
+            self._client.close()
+            self._client = None
+
+    def _send_request(self, command: str) -> Union[Dict[str, Any], str]:
+        if self._client is None:
+            raise RuntimeError("Not connected to robot")
+        return request(command, self._client, self._timeout)
+
+    def authenticate(self, key: str = "My_example_KEY") -> bool:
+        msg = json.dumps({"method": "auth", "params": [key], "id": 1}) + "\n"
+        r = self._send_request(msg)
+        return isinstance(r, dict) and r.get("result") is True
+
+    def get_file_list(self, directory: str = "KRC:\\R1\\Program\\sasha_test") -> List[str]:
+        msg = json.dumps({
+            "method": "File_NameList",
+            "params": [directory, 511, 127],
+            "id": 1
+        }) + "\n"
+        r = self._send_request(msg)
+
+        if isinstance(r, dict) and "result" in r:
+            result = r["result"]
+            if isinstance(result, dict):
+                self._file_list = list(result.keys())
+            elif isinstance(result, list):
+                self._file_list = result
+            else:
+                self._file_list = []
+        else:
+            self._file_list = []
+
+        return self._file_list
+
+    @property
+    def file_list(self) -> List[str]:
+        return self._file_list
+
+    def _copy_file_to_mem(self, file_path: str) -> Optional[str]:
+        msg = json.dumps({
+            "method": "File_CopyFile2Mem",
+            "params": [file_path],
+            "id": 1
+        }) + "\n"
+        r = self._send_request(msg)
+        if isinstance(r, dict) and "result" in r:
+            return r["result"]
+        return None
+
+    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files") -> List[str]:
+        if not self._file_list:
+            self.get_file_list(directory)
+
+        os.makedirs(output_dir, exist_ok=True)
+        saved_files: List[str] = []
+
+        for file_name in self._file_list:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                local_path = os.path.join(output_dir, file_name)
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                saved_files.append(file_name)
+
+        return saved_files
+
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self):
+        self.disconnect()
