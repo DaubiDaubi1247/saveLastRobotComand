@@ -98,7 +98,6 @@ class RobotConnector:
         for file_name in self._file_list:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
-            print(content)
             if content is not None:
                 local_path = os.path.join(output_dir, file_name)
                 with open(local_path, "w", encoding="utf-8") as f:
@@ -113,9 +112,3 @@ class RobotConnector:
 
     def __exit__(self):
         self.disconnect()
-
-r = RobotConnector(addr="192.168.6.191", port=3333)
-r.connect()
-r.authenticate()
-r.get_file_list()
-r.copy_files_to_local()
