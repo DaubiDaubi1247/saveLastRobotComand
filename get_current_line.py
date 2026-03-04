@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Основной модуль: REST API сервер + фоновый опрос роботов"""
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from pydantic import BaseModel
 from robot_poller import poll_robots
 from robot_state_service import RobotStateService
 from robot_state_repository import RobotStateRepository
 
-# Server configuration
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5000
+
+_repository: Optional[RobotStateRepository] = None
+_service: Optional[RobotStateService] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Lifespan контекст для запуска фоновых задач"""
+    global _repository, _service
+    _repository = RobotStateRepository()
+    _service = RobotStateService(_repository)
     task = asyncio.create_task(poll_robots())
     yield
     task.cancel()
@@ -27,8 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         pass
 
 
-# FastAPI приложение
-app = FastAPI(title="Robot Server")
+app = FastAPI(title="Robot Server", lifespan=lifespan)
 
 
 class RequestData(BaseModel):
@@ -40,19 +42,36 @@ class RobotStateResponse(BaseModel):
     robot: str
 
 
+def get_robot_state_service() -> RobotStateService:
+    if _service is None:
+        raise RuntimeError("Service not initialized")
+    return _service
+
+
 @app.get("/health")
 async def health() -> Dict[str, str]:
-    """Проверка доступности сервера"""
     return {"status": "ok"}
 
 
 @app.get("/robots", response_model=List[RobotStateResponse])
-async def get_robots() -> List[RobotStateResponse]:
-    """Получить состояние всех роботов"""
-    repository = RobotStateRepository()
-    service = RobotStateService(repository)
+async def get_robots(service: RobotStateService = Depends(get_robot_state_service)) -> List[RobotStateResponse]:
     states = service.get_all_robots_state()
     return [RobotStateResponse(workshop=s.workshop, robot=s.robot) for s in states]
+
+
+@app.api_route("/api/{endpoint:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def api_endpoint(endpoint: str, request: Request) -> Dict[str, Any]:
+    try:
+        body: Dict[str, Any] = await request.json()
+    except Exception:
+        body = {}
+
+    return {
+        "status": "ok",
+        "endpoint": endpoint,
+        "method": request.method,
+        "data": body
+    }
 
 
 def main() -> None:

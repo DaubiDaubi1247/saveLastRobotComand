@@ -5,14 +5,12 @@ from influxdb import InfluxDBClient
 
 @dataclass
 class RobotStateDB:
-    """Модель данных из базы (сырые данные)"""
     robot: str
     status: Optional[int] = None
     time: Optional[str] = None
 
 
 class RobotStateRepository:
-    """Репозиторий для получения сырых данных из InfluxDB"""
 
     def __init__(
         self,
@@ -31,15 +29,6 @@ class RobotStateRepository:
         )
 
     def get_robot_state(self, robot: str) -> Optional[RobotStateDB]:
-        """
-        Получить последнее состояние конкретного робота.
-
-        Args:
-            robot: Имя робота (например, 'W8R1')
-
-        Returns:
-            RobotStateDB или None, если данных нет
-        """
         query = f"""
         SELECT LAST(status) as status, time
         FROM rob_state
@@ -63,12 +52,6 @@ class RobotStateRepository:
         return None
 
     def get_all_robots_state(self) -> List[RobotStateDB]:
-        """
-        Получить состояние всех роботов.
-
-        Returns:
-            Список RobotStateDB для всех роботов
-        """
         query = """
         SELECT LAST(status) as status, time
         FROM rob_state

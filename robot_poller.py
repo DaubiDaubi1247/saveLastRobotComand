@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Модуль опроса роботов и отправки данных в Telegraf"""
 import asyncio
 import json
 import socket
@@ -10,7 +9,6 @@ from telegraf.client import TelegrafClient
 
 POLL_INTERVAL = 15
 
-# Telegraf/InfluxDB configuration
 TELEGRAF_HOST = "192.168.22.11"
 TELEGRAF_PORT = 8092
 
@@ -108,7 +106,6 @@ def get_program_info(addr: str, port: int, timeout: float = 3.0) -> ProgramInfo:
 
 
 class RobotPoller:
-    """Класс для опроса роботов и отправки данных в Telegraf"""
 
     def __init__(self, host: str = TELEGRAF_HOST, port: int = TELEGRAF_PORT):
         self._tg_client = TelegrafClient(host=host, port=port)
@@ -130,21 +127,14 @@ class RobotPoller:
             print(f"{key}: {e}")
 
     def poll_all(self) -> None:
-        """Опросить всех роботов"""
         for key, config in self._robots.items():
             self._poll_robot(key, config)
 
-    async def poll_all_async(self) -> None:
-        """Асинхронный опрос всех роботов"""
-        await asyncio.to_thread(self.poll_all)
-
     async def run(self) -> None:
-        """Запустить непрерывный асинхронный опрос роботов"""
         while True:
-            await self.poll_all_async()
+            await asyncio.to_thread(self.poll_all)
             await asyncio.sleep(POLL_INTERVAL)
 
 
 async def poll_robots() -> None:
-    """Функция для запуска в фоне через asyncio.create_task()"""
     await RobotPoller().run()
