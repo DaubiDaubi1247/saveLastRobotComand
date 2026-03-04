@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 from influxdb import InfluxDBClient
 
+# Typing is not used because there is no library for types
 
 @dataclass
 class RobotStateDB:

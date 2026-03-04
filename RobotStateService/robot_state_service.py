@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from robot_state_repository import RobotStateRepository, RobotStateDB
+from RobotStateRepository.robot_state_repository import RobotStateRepository, RobotStateDB
 
 
 @dataclass

@@ -4,10 +4,10 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import uvicorn
 from fastapi import FastAPI, Request, Depends
-from pydantic import BaseModel
 from robot_poller import poll_robots
-from robot_state_service import RobotStateService
-from robot_state_repository import RobotStateRepository
+from RobotStateService.robot_state_service import RobotStateService
+from RobotStateRepository.robot_state_repository import RobotStateRepository
+from Api.models.models import RobotStateResponse
 
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5000
@@ -31,15 +31,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title="Robot Server", lifespan=lifespan)
-
-
-class RequestData(BaseModel):
-    data: Optional[Dict[str, Any]] = None
-
-
-class RobotStateResponse(BaseModel):
-    workshop: str
-    robot: str
 
 
 def get_robot_state_service() -> RobotStateService:
