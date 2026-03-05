@@ -3,7 +3,7 @@ import json
 import socket
 import os
 from typing import Any, Dict, List, Optional, Union
-from file_content_processor import FileContentProcessor
+from .file_content_processor import FileContentProcessor
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -79,6 +79,9 @@ class RobotConnector:
     def file_list(self) -> List[str]:
         return self._file_list
 
+    def _get_dat_files(self) -> List[str]:
+        return [f for f in self._file_list if f.endswith('.dat')]
+
     def _copy_file_to_mem(self, file_path: str) -> Optional[str]:
         msg = json.dumps({
             "method": "File_CopyFile2Mem",
@@ -110,15 +113,26 @@ class RobotConnector:
 
         return saved_files
 
+    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, List[List[float]]]:
+        if not self._file_list:
+            self.get_file_list(directory)
+
+        dat_files = self._get_dat_files()
+        result: Dict[str, List[List[float]]] = {"s": [], "w": []}
+
+        for file_name in dat_files:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                points = self._processor.process_dat_content_to_arrays(content)
+                result["s"].extend(points["s"])
+                result["w"].extend(points["w"])
+
+        return result
+
     def __enter__(self):
         self.connect()
         return self
 
     def __exit__(self):
         self.disconnect()
-
-r = RobotConnector(addr="192.168.6.191", port=3333)
-r.connect()
-r.authenticate()
-r.get_file_list()
-r.copy_files_to_local()
