@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 from telegraf.client import TelegrafClient
-from robot_connector import request
+from .robot_connector import request
 
 POLL_INTERVAL = 15
 
@@ -98,7 +98,6 @@ class RobotPoller:
             "program_name": info.name_c_trl if info.name_c_trl is not None else None,
         }
         self._tg_client.metric("program_info", data, tags={"robot": robot_tag})
-        print("send " + robot_tag + " " + str(data))
 
     def _poll_robot(self, key: str, config: Tuple[str, int, int, str]) -> None:
         try:

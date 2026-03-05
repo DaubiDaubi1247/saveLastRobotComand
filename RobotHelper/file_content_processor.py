@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import re
-import json
 from typing import Dict, List
 
 

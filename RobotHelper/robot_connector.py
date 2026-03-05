@@ -3,7 +3,7 @@ import json
 import socket
 import os
 from typing import Any, Dict, List, Optional, Union
-from file_content_processor import FileContentProcessor
+from .file_content_processor import FileContentProcessor
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -113,32 +113,10 @@ class RobotConnector:
 
         return saved_files
 
-    def copy_dat_files_to_local(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files", output_file: str = "all_dat_files.dat") -> List[str]:
+    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, List[List[float]]]:
         if not self._file_list:
             self.get_file_list(directory)
 
-        os.makedirs(output_dir, exist_ok=True)
-        dat_files = self._get_dat_files()
-        all_content: List[str] = []
-
-        for file_name in dat_files:
-            file_path = f"{directory}\\{file_name}"
-            content = self._copy_file_to_mem(file_path)
-            if content is not None:
-                processed = self._processor.process_dat_content(content)
-                all_content.append(processed)
-
-        output_path = os.path.join(output_dir, output_file)
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write('\n'.join(all_content))
-
-        return dat_files
-
-    def copy_dat_files_to_json(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files", output_file: str = "points.json") -> Dict[str, List[List[float]]]:
-        if not self._file_list:
-            self.get_file_list(directory)
-
-        os.makedirs(output_dir, exist_ok=True)
         dat_files = self._get_dat_files()
         result: Dict[str, List[List[float]]] = {"s": [], "w": []}
 
@@ -158,10 +136,3 @@ class RobotConnector:
 
     def __exit__(self):
         self.disconnect()
-
-r = RobotConnector(addr="192.168.6.191", port=3333)
-r.connect()
-r.authenticate()
-r.get_file_list()
-r.copy_dat_files_to_local()
-print(r.copy_dat_files_to_json())
