@@ -79,6 +79,9 @@ class RobotConnector:
     def file_list(self) -> List[str]:
         return self._file_list
 
+    def _get_dat_files(self) -> List[str]:
+        return [f for f in self._file_list if f.endswith('.dat')]
+
     def _copy_file_to_mem(self, file_path: str) -> Optional[str]:
         msg = json.dumps({
             "method": "File_CopyFile2Mem",
@@ -110,6 +113,45 @@ class RobotConnector:
 
         return saved_files
 
+    def copy_dat_files_to_local(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files", output_file: str = "all_dat_files.dat") -> List[str]:
+        if not self._file_list:
+            self.get_file_list(directory)
+
+        os.makedirs(output_dir, exist_ok=True)
+        dat_files = self._get_dat_files()
+        all_content: List[str] = []
+
+        for file_name in dat_files:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                processed = self._processor.process_dat_content(content)
+                all_content.append(processed)
+
+        output_path = os.path.join(output_dir, output_file)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write('\n'.join(all_content))
+
+        return dat_files
+
+    def copy_dat_files_to_json(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files", output_file: str = "points.json") -> Dict[str, List[List[float]]]:
+        if not self._file_list:
+            self.get_file_list(directory)
+
+        os.makedirs(output_dir, exist_ok=True)
+        dat_files = self._get_dat_files()
+        result: Dict[str, List[List[float]]] = {"s": [], "w": []}
+
+        for file_name in dat_files:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                points = self._processor.process_dat_content_to_arrays(content)
+                result["s"].extend(points["s"])
+                result["w"].extend(points["w"])
+
+        return result
+
     def __enter__(self):
         self.connect()
         return self
@@ -121,4 +163,5 @@ r = RobotConnector(addr="192.168.6.191", port=3333)
 r.connect()
 r.authenticate()
 r.get_file_list()
-r.copy_files_to_local()
+r.copy_dat_files_to_local()
+print(r.copy_dat_files_to_json())
