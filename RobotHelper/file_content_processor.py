@@ -13,6 +13,7 @@ class FileContentProcessor:
         self._coords_pattern = re.compile(
             r'X\s*(-?\d+\.?\d*),\s*Y\s*(-?\d+\.?\d*),\s*Z\s*(-?\d+\.?\d*)'
         )
+        self._name_pattern = re.compile(r'\b(X[SW])(\d+)_\d+\s*=')
 
     def process_dat_content(self, content: str) -> str:
         lines = content.split('\n')
@@ -25,8 +26,8 @@ class FileContentProcessor:
 
         return '\n'.join(filtered_lines)
 
-    def process_dat_content_to_arrays(self, content: str) -> Dict[str, List[List[float]]]:
-        result: Dict[str, List[List[float]]] = {"s": [], "w": []}
+    def process_dat_content_to_arrays(self, content: str) -> Dict[str, Dict[str, List[List[float]]]]:
+        result: Dict[str, Dict[str, List[List[float]]]] = {}
         lines = content.split('\n')
 
         for line in lines:
@@ -34,12 +35,16 @@ class FileContentProcessor:
             if not line:
                 continue
 
-            xs_match = re.search(r'\bXS[A-Z0-9_]*\s*=', line)
-            xw_match = re.search(r'\bXW[A-Z0-9_]*\s*=', line)
-
             coords_match = self._coords_pattern.search(line)
             if not coords_match:
                 continue
+
+            name_match = self._name_pattern.search(line)
+            if not name_match:
+                continue
+
+            point_type = name_match.group(1)
+            point_num = name_match.group(2)
 
             point = [
                 float(coords_match.group(1)),
@@ -47,10 +52,14 @@ class FileContentProcessor:
                 float(coords_match.group(3))
             ]
 
-            if xs_match:
-                result["s"].append(point)
-            elif xw_match:
-                result["w"].append(point)
+            if point_type == "XS":
+                key = f"s{point_num}"
+            else:
+                key = f"w{point_num}"
+
+            if key not in result:
+                result[key] = []
+            result[key].append(point)
 
         return result
 

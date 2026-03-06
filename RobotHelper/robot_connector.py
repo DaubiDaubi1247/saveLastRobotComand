@@ -113,20 +113,22 @@ class RobotConnector:
 
         return saved_files
 
-    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, List[List[float]]]:
+    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, Dict[str, List[List[float]]]]:
         if not self._file_list:
             self.get_file_list(directory)
 
         dat_files = self._get_dat_files()
-        result: Dict[str, List[List[float]]] = {"s": [], "w": []}
+        result: Dict[str, Dict[str, List[List[float]]]] = {}
 
         for file_name in dat_files:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)
-                result["s"].extend(points["s"])
-                result["w"].extend(points["w"])
+                for key, value in points.items():
+                    if key not in result:
+                        result[key] = []
+                    result[key].extend(value)
 
         return result
 
