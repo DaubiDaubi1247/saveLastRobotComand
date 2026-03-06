@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 import uvicorn
 from fastapi import FastAPI, Depends
 from RobotHelper.robot_poller import poll_robots
@@ -62,8 +62,8 @@ async def get_robots(service: RobotStateService = Depends(get_robot_state_servic
     return [RobotStateResponse(workshop=s.workshop, robot=s.robot) for s in states]
 
 
-@app.get("/api/robots/{robot_name}/points", response_model=Dict[str, List[List[float]]])
-async def get_robot_points(robot_name: str, service: RobotPointsService = Depends(get_robot_points_service)) -> Dict[str, List[List[float]]]:
+@app.get("/api/robots/{robot_name}/points", response_model=Dict[str, Any])
+async def get_robot_points(robot_name: str, service: RobotPointsService = Depends(get_robot_points_service)) -> Dict[str, Any]:
     return service.get_robot_points(robot_name)
 
 
