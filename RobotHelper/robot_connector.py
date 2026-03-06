@@ -3,7 +3,8 @@ import json
 import socket
 import os
 from typing import Any, Dict, List, Optional, Union
-from .file_content_processor import FileContentProcessor
+from file_content_processor import FileContentProcessor
+from src_file_processor import SrcFileProcessor
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -35,6 +36,7 @@ class RobotConnector:
         self._client: Optional[socket.socket] = None
         self._file_list: List[str] = []
         self._processor = FileContentProcessor()
+        self._src_processor = SrcFileProcessor()
 
     def connect(self) -> None:
         self._client = socket.create_connection((self._addr, self._port), self._timeout)
@@ -82,6 +84,9 @@ class RobotConnector:
     def _get_dat_files(self) -> List[str]:
         return [f for f in self._file_list if f.endswith('.dat')]
 
+    def _get_src_files(self) -> List[str]:
+        return [f for f in self._file_list if f.endswith('.src')]
+
     def _copy_file_to_mem(self, file_path: str) -> Optional[str]:
         msg = json.dumps({
             "method": "File_CopyFile2Mem",
@@ -93,20 +98,21 @@ class RobotConnector:
             return r["result"]
         return None
 
-    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\sasha_test", output_dir: str = "robot_files") -> List[str]:
+    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files") -> List[str]:
         if not self._file_list:
             self.get_file_list(directory)
 
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
+        src_files = self._get_src_files()
 
-        for file_name in self._file_list:
+        for file_name in src_files:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
-                if self._processor.should_process(file_name):
-                    content = self._processor.process_dat_content(content)
+                content = self._src_processor.process_src_content(content)
                 local_path = os.path.join(output_dir, file_name)
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
                 saved_files.append(file_name)
@@ -138,3 +144,8 @@ class RobotConnector:
 
     def __exit__(self):
         self.disconnect()
+
+r = RobotConnector(addr="10.1.0.82", port=3333)
+r.connect()
+r.authenticate()
+r.copy_files_to_local()
