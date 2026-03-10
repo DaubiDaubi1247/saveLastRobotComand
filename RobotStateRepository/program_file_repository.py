@@ -1,5 +1,7 @@
 import os
 from typing import Optional, List
+from RobotHelper.robot_connector import RobotConnector
+from RobotHelper.robot_poller import ROBOTS
 
 
 class ProgramFileRepository:
@@ -7,16 +9,52 @@ class ProgramFileRepository:
     def __init__(self, base_dir: str = "robot_files"):
         self._base_dir = base_dir
 
-    def _find_file(self, program_name: str) -> Optional[str]:
+    def _download_robot_files(self, robot_name: str) -> None:
+        config = ROBOTS.get(robot_name)
+        if not config:
+            return
+
+        addr = config[0]
+        port = config[1]
+
+        connector = RobotConnector(addr=addr, port=port, timeout=5.0)
+        try:
+            connector.connect()
+            connector.authenticate()
+            connector.get_file_list()
+            connector.copy_files_to_local(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
+        except Exception:
+            pass
+        finally:
+            connector.disconnect()
+
+    def _find_file(self, program_name: str, robot_name: Optional[str] = None) -> Optional[str]:
+        if not program_name:
+            return None
+            
         program_name = program_name.upper()
         if not program_name.endswith('.SRC'):
             program_name += '.SRC'
 
+        # Очищаем путь от ведущих /R1/ и т.д., оставляем только имя файла
+        file_name_only = os.path.basename(program_name.replace('\\', '/'))
+
+        # Если указан robot_name, ищем в его папке
+        if robot_name:
+            robot_dir = os.path.join(self._base_dir, robot_name)
+            if os.path.exists(robot_dir):
+                for root, dirs, files in os.walk(robot_dir):
+                    for file in files:
+                        if file.upper() == file_name_only or file.upper() == program_name:
+                            return os.path.join(root, file)
+
+        # Если не нашли или robot_name не указан, ищем во всех папках
         for root, dirs, files in os.walk(self._base_dir):
             for file in files:
-                if file.upper() == program_name:
+                if file.upper() == file_name_only or file.upper() == program_name:
                     return os.path.join(root, file)
 
+        # Пробуем найти по полному пути
         normalized = program_name.lstrip('\\/')
         normalized = normalized.replace('/', os.sep).replace('\\', os.sep)
         full_path = os.path.join(self._base_dir, normalized)
@@ -25,8 +63,13 @@ class ProgramFileRepository:
 
         return None
 
-    def get_line(self, program_name: str, line_number: int) -> Optional[str]:
-        file_path = self._find_file(program_name)
+    def get_line(self, program_name: str, line_number: int, robot_name: Optional[str] = None) -> Optional[str]:
+        file_path = self._find_file(program_name, robot_name)
+        
+        if not file_path and robot_name:
+            self._download_robot_files(robot_name)
+            file_path = self._find_file(program_name, robot_name)
+        
         if not file_path:
             return None
 

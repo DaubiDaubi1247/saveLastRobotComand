@@ -16,3 +16,4 @@ class RobotProgramResponse(BaseModel):
     program_name: Optional[str] = None
     snr_c: Optional[int] = None
     program_line: Optional[str] = None
+    point_name: Optional[str] = None

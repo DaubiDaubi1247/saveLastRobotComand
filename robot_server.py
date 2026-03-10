@@ -65,17 +65,6 @@ async def get_robots(service: RobotStateService = Depends(get_robot_state_servic
     return [RobotStateResponse(workshop=s.workshop, robot=s.robot) for s in states]
 
 
-@app.get("/api/robots/programs", response_model=List[RobotProgramResponse])
-async def get_robots_programs(service: RobotStateService = Depends(get_robot_state_service)) -> List[RobotProgramResponse]:
-    programs = service.get_all_robots_programs()
-    return [RobotProgramResponse(
-        robot=p.robot,
-        program_name=p.program_name,
-        snr_c=p.snr_c,
-        program_line=p.program_line
-    ) for p in programs]
-
-
 @app.get("/api/robots/{robot_name}/program", response_model=RobotProgramResponse)
 async def get_robot_program(robot_name: str, service: RobotStateService = Depends(get_robot_state_service)) -> RobotProgramResponse:
     program = service.get_robot_program(robot_name)
@@ -83,7 +72,8 @@ async def get_robot_program(robot_name: str, service: RobotStateService = Depend
         robot=program.robot,
         program_name=program.program_name,
         snr_c=program.snr_c,
-        program_line=program.program_line
+        program_line=program.program_line,
+        point_name=program.point_name
     )
 
 

@@ -98,10 +98,13 @@ class RobotConnector:
             return r["result"]
         return None
 
-    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files") -> List[str]:
+    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
         if not self._file_list:
             self.get_file_list(directory)
 
+        if robot_name:
+            output_dir = os.path.join(output_dir, robot_name)
+        
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
         src_files = self._get_src_files()
@@ -109,7 +112,8 @@ class RobotConnector:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
-                content = self._src_processor.process_src_content(content)
+                if process_src:
+                    content = self._src_processor.process_src_content(content)
                 local_path = os.path.join(output_dir, file_name)
                 os.makedirs(os.path.dirname(local_path), exist_ok=True)
                 with open(local_path, "w", encoding="utf-8") as f:
@@ -144,7 +148,7 @@ class RobotConnector:
     def __exit__(self):
         self.disconnect()
 
-r = RobotConnector(addr="10.1.0.82", port=3333)
-r.connect()
-r.authenticate()
-r.copy_files_to_local()
+# r = RobotConnector(addr="10.1.0.82", port=3333)
+# r.connect()
+# r.authenticate()
+# r.copy_files_to_local()
