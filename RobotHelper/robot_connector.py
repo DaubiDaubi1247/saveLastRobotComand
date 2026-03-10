@@ -3,8 +3,8 @@ import json
 import socket
 import os
 from typing import Any, Dict, List, Optional, Union
-from file_content_processor import FileContentProcessor
-from src_file_processor import SrcFileProcessor
+from .file_content_processor import FileContentProcessor
+from .src_file_processor import SrcFileProcessor
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -105,7 +105,6 @@ class RobotConnector:
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
         src_files = self._get_src_files()
-
         for file_name in src_files:
             file_path = f"{directory}\\{file_name}"
             content = self._copy_file_to_mem(file_path)

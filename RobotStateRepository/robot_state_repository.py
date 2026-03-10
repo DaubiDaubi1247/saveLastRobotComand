@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from typing import List, Optional
 from influxdb import InfluxDBClient
 
-# Typing is not used because there is no library for types
 
 @dataclass
 class RobotStateDB:
     robot: str
-    status: Optional[int] = None
-    time: Optional[str] = None
+    program_names: Optional[str] = None
+    snr_c: Optional[int] = None
 
 
 class RobotStateRepository:
@@ -31,9 +30,11 @@ class RobotStateRepository:
 
     def get_robot_state(self, robot: str) -> Optional[RobotStateDB]:
         query = f"""
-        SELECT LAST(status) as status, time
-        FROM rob_state
-        WHERE robot = '{robot}' AND status != 0 AND time >= now() - 1m
+        SELECT program_names, snr_c
+        FROM program_info
+        WHERE robot = '{robot}' AND time >= now() - 1m
+        ORDER BY time DESC
+        LIMIT 1
         """
 
         result = self._client.query(query)
@@ -46,17 +47,17 @@ class RobotStateRepository:
             if point:
                 return RobotStateDB(
                     robot=robot,
-                    status=point.get('last'),
-                    time=point.get('time')
+                    program_names=point.get('program_names'),
+                    snr_c=point.get('snr_c')
                 )
 
         return None
 
     def get_all_robots_state(self) -> List[RobotStateDB]:
         query = """
-        SELECT LAST(status) as status, time
-        FROM rob_state
-        WHERE status != 0 AND time >= now() - 1m
+        SELECT program_names, snr_c
+        FROM program_info
+        WHERE time >= now() - 1m
         GROUP BY robot
         """
 
@@ -69,8 +70,33 @@ class RobotStateRepository:
             if point:
                 states.append(RobotStateDB(
                     robot=robot_name,
-                    status=point.get('last'),
-                    time=point.get('time')
+                    program_names=point.get('program_names'),
+                    snr_c=point.get('snr_c')
                 ))
 
         return states
+
+    def get_robot_program_info(self, robot: str) -> Optional[RobotStateDB]:
+        query = f"""
+        SELECT program_names, snr_c
+        FROM program_info
+        WHERE robot = '{robot}' AND time >= now() - 1m
+        ORDER BY time DESC
+        LIMIT 1
+        """
+
+        result = self._client.query(query)
+
+        if not result:
+            return None
+
+        for (measurement, tags), points in result.items():
+            point = next(points, None)
+            if point:
+                return RobotStateDB(
+                    robot=robot,
+                    program_names=point.get('program_names'),
+                    snr_c=point.get('snr_c')
+                )
+
+        return None
