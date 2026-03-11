@@ -83,6 +83,48 @@ class ProgramFileRepository:
 
         return None
 
+    def get_line_with_fold_context(self, program_name: str, line_number: int, robot_name: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+        file_path = self._find_file(program_name, robot_name)
+        
+        if not file_path and robot_name:
+            self._download_robot_files(robot_name)
+            file_path = self._find_file(program_name, robot_name)
+        
+        if not file_path:
+            return None, None
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                
+                if not (0 < line_number <= len(lines)):
+                    return None, None
+                
+                current_line = lines[line_number - 1].rstrip('\n')
+                
+                # Ищем ближайший ;FOLD выше текущей строки (пропуская FOLD Parameters)
+                fold_line = None
+                
+                for i in range(line_number - 2, -1, -1):
+                    line = lines[i].strip()
+                    if line.startswith(';FOLD'):
+                        # Пропускаем FOLD Parameters
+                        if 'Parameters' not in line:
+                            # Убираем ";FOLD " из начала и всё после ";" в конце
+                            fold_line = line[5:].strip() if line.startswith(';FOLD ') else line[1:].strip()
+                            # Убираем всё после ";" (включительно)
+                            semicolon_index = fold_line.find(';')
+                            if semicolon_index != -1:
+                                fold_line = fold_line[:semicolon_index].strip()
+                            break
+                
+                return current_line, fold_line
+                
+        except Exception:
+            pass
+
+        return None, None
+
     def get_file_content(self, program_name: str) -> Optional[List[str]]:
         file_path = self._find_file(program_name)
         if not file_path:

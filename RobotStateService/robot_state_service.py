@@ -36,6 +36,16 @@ class RobotStateService:
         if not line:
             return None
 
+        # Для FOLD строк вида ";FOLD LIN S1_4 ... ;%{PE}" или ";FOLD ARCSWI ... LIN W8_5 ..."
+        fold_match = re.match(r'^\s*;FOLD\s+(.+?)$', line, re.IGNORECASE)
+        if fold_match:
+            fold_content = fold_match.group(1)
+            match = self._point_pattern.search(fold_content)
+            if match:
+                return f"{match.group(1)}{match.group(2)}".lower()
+            return None
+
+        # Для обычных строк ищем точку в строке
         match = self._point_pattern.search(line)
         if match:
             return f"{match.group(1)}{match.group(2)}".lower()
@@ -51,14 +61,19 @@ class RobotStateService:
     def _map_to_robot_program(self, db_state: RobotProgramDB) -> RobotProgram:
         program_line = None
         point_name = None
+        fold_line = None
 
         if db_state.program_names and db_state.snr_c:
-            program_line = self._file_repository.get_line(
+            current_line, fold_line = self._file_repository.get_line_with_fold_context(
                 db_state.program_names,
                 db_state.snr_c,
                 db_state.robot
             )
-            point_name = self._extract_point_info(program_line)
+            # Если есть FOLD заголовок, используем его как program_line
+            program_line = fold_line if fold_line else current_line
+            # Извлекаем точку из FOLD заголовка или из текущей строки
+            line_for_point = fold_line if fold_line else current_line
+            point_name = self._extract_point_info(line_for_point)
         else:
             db_state.program_names = None
             db_state.snr_c = None
