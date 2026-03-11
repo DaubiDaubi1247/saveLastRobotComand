@@ -9,7 +9,8 @@ from RobotStateService.robot_state_service import RobotStateService
 from RobotStateRepository.robot_state_repository import RobotStateRepository
 from RobotStateService.robot_points_service import RobotPointsService
 from RobotStateRepository.robot_points_repository import RobotPointsRepository
-from Api.models.models import RobotStateResponse
+from Api.models.models import RobotStateResponse, RobotProgramResponse
+from RobotStateRepository.program_file_repository import ProgramFileRepository
 
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5000
@@ -18,13 +19,15 @@ _repository: Optional[RobotStateRepository] = None
 _service: Optional[RobotStateService] = None
 _points_repository: Optional[RobotPointsRepository] = None
 _points_service: Optional[RobotPointsService] = None
+_file_repository: Optional[ProgramFileRepository] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    global _repository, _service, _points_repository, _points_service
+    global _repository, _service, _points_repository, _points_service, _file_repository
+    _file_repository = ProgramFileRepository()
     _repository = RobotStateRepository()
-    _service = RobotStateService(_repository)
+    _service = RobotStateService(_repository, _file_repository)
     _points_repository = RobotPointsRepository()
     _points_service = RobotPointsService(_points_repository)
     task = asyncio.create_task(poll_robots())
@@ -60,6 +63,18 @@ async def health() -> Dict[str, str]:
 async def get_robots(service: RobotStateService = Depends(get_robot_state_service)) -> List[RobotStateResponse]:
     states = service.get_all_robots_state()
     return [RobotStateResponse(workshop=s.workshop, robot=s.robot) for s in states]
+
+
+@app.get("/api/robots/{robot_name}/program", response_model=RobotProgramResponse)
+async def get_robot_program(robot_name: str, service: RobotStateService = Depends(get_robot_state_service)) -> RobotProgramResponse:
+    program = service.get_robot_program(robot_name)
+    return RobotProgramResponse(
+        robot=program.robot,
+        program_name=program.program_name,
+        snr_c=program.snr_c,
+        program_line=program.program_line,
+        point_name=program.point_name
+    )
 
 
 @app.get("/api/robots/{robot_name}/points", response_model=Dict[str, Any])

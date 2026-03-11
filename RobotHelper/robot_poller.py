@@ -94,8 +94,8 @@ class RobotPoller:
 
     def _send_to_telegraf(self, info: ProgramInfo, robot_tag: str) -> None:
         data = {
-            "snr_c_trl": info.snr_c_trl if info.snr_c_trl is not None else 0,
-            "program_name": info.name_c_trl if info.name_c_trl is not None else None,
+            "snr_c": info.snr_c if info.snr_c is not None else 0,
+            "program_name": info.name_c if info.name_c is not None else None,
         }
         self._tg_client.metric("program_info", data, tags={"robot": robot_tag})
 

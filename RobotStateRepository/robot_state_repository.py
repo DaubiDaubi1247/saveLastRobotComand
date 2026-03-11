@@ -2,13 +2,19 @@ from dataclasses import dataclass
 from typing import List, Optional
 from influxdb import InfluxDBClient
 
-# Typing is not used because there is no library for types
 
 @dataclass
 class RobotStateDB:
     robot: str
     status: Optional[int] = None
     time: Optional[str] = None
+
+
+@dataclass
+class RobotProgramDB:
+    robot: str
+    program_names: Optional[str] = None
+    snr_c: Optional[int] = None
 
 
 class RobotStateRepository:
@@ -74,3 +80,41 @@ class RobotStateRepository:
                 ))
 
         return states
+
+    def get_robot_program_info(self, robot: str) -> Optional[RobotProgramDB]:
+        query = f"""
+        SELECT program_name, snr_c
+        FROM program_info
+        WHERE robot = '{robot}' AND time >= now() - 1m
+        ORDER BY time DESC
+        LIMIT 1
+        """
+
+        result = self._client.query(query)
+
+        if not result:
+            return None
+
+        for (measurement, tags), points in result.items():
+            point = next(points, None)
+            if point:
+                program_name = point.get('program_name')
+                snr_c = point.get('snr_c')
+
+                if not program_name:
+                    program_name = None
+                if snr_c is not None:
+                    try:
+                        snr_c = int(snr_c)
+                    except (ValueError, TypeError):
+                        snr_c = None
+                else:
+                    snr_c = None
+
+                return RobotProgramDB(
+                    robot=robot,
+                    program_names=program_name,
+                    snr_c=snr_c
+                )
+
+        return None
