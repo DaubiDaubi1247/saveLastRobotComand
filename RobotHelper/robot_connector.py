@@ -56,7 +56,7 @@ class RobotConnector:
         r = self._send_request(msg)
         return isinstance(r, dict) and r.get("result") is True
 
-    def get_file_list(self, directory: str = "KRC:\\R1\\Program\\sasha_test") -> List[str]:
+    def get_file_list(self, directory: str = "KRC:\\R1\\Program\\work") -> List[str]:
         msg = json.dumps({
             "method": "File_NameList",
             "params": [directory, 511, 127],
@@ -73,7 +73,11 @@ class RobotConnector:
             else:
                 self._file_list = []
         else:
-            self._file_list = []
+            # Ошибка при получении списка файлов
+            error_msg = f"Failed to get file list from {directory}"
+            if isinstance(r, dict) and "error" in r:
+                error_msg += f": {r['error']}"
+            raise RuntimeError(error_msg)
 
         return self._file_list
 
@@ -122,12 +126,44 @@ class RobotConnector:
 
         return saved_files
 
-    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, Dict[str, List[List[float]]]]:
-        if not self._file_list:
-            self.get_file_list(directory)
+    def copy_work_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
+        """Скачать файлы из рабочей папки KRC:\\R1\\Program\\work"""
+        return self.copy_files_to_local(
+            directory="KRC:\\R1\\Program\\work",
+            output_dir=output_dir,
+            robot_name=robot_name,
+            process_src=process_src
+        )
+
+    def copy_generated_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None) -> List[str]:
+        """Скачать файлы из папки generated"""
+        # Очищаем список и получаем файлы из папки generated
+        self._file_list = []
+        self.get_file_list("KRC:\\R1\\Program\\generated")
+
+        if robot_name:
+            output_dir = os.path.join(output_dir, robot_name)
+
+        os.makedirs(output_dir, exist_ok=True)
+        saved_files: List[str] = []
+
+        for file_name in self._file_list:
+            file_path = f"KRC:\\R1\\Program\\generated\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                local_path = os.path.join(output_dir, file_name)
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                with open(local_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                saved_files.append(file_name)
+
+        return saved_files
+
+    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, List[List[float]]]:
+        self.get_file_list(directory)
 
         dat_files = self._get_dat_files()
-        result: Dict[str, Dict[str, List[List[float]]]] = {}
+        result: Dict[str, List[List[float]]] = {}
 
         for file_name in dat_files:
             file_path = f"{directory}\\{file_name}"
@@ -138,6 +174,21 @@ class RobotConnector:
                     if key not in result:
                         result[key] = []
                     result[key].extend(value)
+
+        return result
+
+    def get_dat_points_by_file(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, Dict[str, List[List[float]]]]:
+        self.get_file_list(directory)
+
+        dat_files = self._get_dat_files()
+        result: Dict[str, Dict[str, List[List[float]]]] = {}
+
+        for file_name in dat_files:
+            file_path = f"{directory}\\{file_name}"
+            content = self._copy_file_to_mem(file_path)
+            if content is not None:
+                points = self._processor.process_dat_content_to_arrays(content)
+                result[file_name] = points
 
         return result
 

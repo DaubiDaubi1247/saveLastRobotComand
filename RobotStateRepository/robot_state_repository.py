@@ -62,7 +62,7 @@ class RobotStateRepository:
         query = """
         SELECT LAST(status) as status, time
         FROM rob_state
-        WHERE status != 0 AND time >= now() - 1m
+        WHERE status > 1 AND time >= now() - 1m
         GROUP BY robot
         """
 

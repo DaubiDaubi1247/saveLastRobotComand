@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Literal
 import re
 from RobotStateRepository.robot_state_repository import RobotStateRepository, RobotStateDB, RobotProgramDB
 from RobotStateRepository.program_file_repository import ProgramFileRepository
@@ -26,6 +26,9 @@ class RobotStateService:
         self._repository = repository
         self._file_repository = file_repository
         self._point_pattern = re.compile(r'[XY]?([SW])(\d+)_\d+')
+
+    def download_robot_files(self, robot_name: str, download_work: bool = True, download_generated: bool = False) -> None:
+        self._file_repository.download_robot_files(robot_name, download_work, download_generated)
 
     def _extract_workshop(self, robot_name: str) -> str:
         if len(robot_name) >= 2 and robot_name[0] == 'W':
@@ -58,7 +61,7 @@ class RobotStateService:
             robot=db_state.robot
         )
 
-    def _map_to_robot_program(self, db_state: RobotProgramDB) -> RobotProgram:
+    def _map_to_robot_program(self, db_state: RobotProgramDB, source: Optional[Literal["work", "generated"]] = None) -> RobotProgram:
         program_line = None
         point_name = None
         fold_line = None
@@ -67,11 +70,14 @@ class RobotStateService:
             current_line, fold_line = self._file_repository.get_line_with_fold_context(
                 db_state.program_names,
                 db_state.snr_c,
-                db_state.robot
+                db_state.robot,
+                source=source
             )
-            # Если есть FOLD заголовок, используем его как program_line
+            if current_line is None and fold_line is None and source:
+                # Файл не найден в указанной папке
+                folder_name = "generated" if source == "generated" else "work"
+                raise FileNotFoundError(f"Исполняемый файл '{db_state.program_names}' не найден в папке {folder_name}, проверьте корректность выбранного метода загрузки программы")
             program_line = fold_line if fold_line else current_line
-            # Извлекаем точку из FOLD заголовка или из текущей строки
             line_for_point = fold_line if fold_line else current_line
             point_name = self._extract_point_info(line_for_point)
         else:
@@ -81,8 +87,8 @@ class RobotStateService:
         return RobotProgram(
             robot=db_state.robot,
             program_name=db_state.program_names,
-            snr_c=db_state.snr_c,
             program_line=program_line,
+            snr_c=db_state.snr_c,
             point_name=point_name
         )
 
@@ -96,8 +102,8 @@ class RobotStateService:
         db_states = self._repository.get_all_robots_state()
         return [self._map_to_robot_state(s) for s in db_states]
 
-    def get_robot_program(self, robot: str) -> RobotProgram:
+    def get_robot_program(self, robot: str, source: Optional[Literal["work", "generated"]] = None) -> RobotProgram:
         db_state = self._repository.get_robot_program_info(robot)
         if db_state is None:
             return RobotProgram(robot=robot)
-        return self._map_to_robot_program(db_state)
+        return self._map_to_robot_program(db_state, source=source)

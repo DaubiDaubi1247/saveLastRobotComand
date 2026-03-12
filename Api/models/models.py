@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class RequestData(BaseModel):
@@ -17,3 +17,18 @@ class RobotProgramResponse(BaseModel):
     snr_c: Optional[int] = None
     program_line: Optional[str] = None
     point_name: Optional[str] = None
+
+
+class RobotPointsResponse(BaseModel):
+    s: List[List[float]]
+    w: List[List[float]]
+    source: Optional[str] = None
+
+
+class GeneratedPointsFile(BaseModel):
+    file_name: str
+    points: Dict[str, List[List[float]]]
+
+
+class GeneratedPointsResponse(BaseModel):
+    files: List[GeneratedPointsFile]

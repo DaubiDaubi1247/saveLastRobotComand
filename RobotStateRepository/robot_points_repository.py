@@ -15,10 +15,10 @@ class RobotPointsRepository:
             "timeout": config[2] / 1000.0
         }
 
-    def get_robot_points(self, robot_name: str) -> Dict[str, Dict[str, List[List[float]]]]:
+    def get_robot_points(self, robot_name: str) -> Dict[str, List[List[float]]]:
         config = self._get_robot_config(robot_name)
         if not config:
-            return {}
+            return {"s": [], "w": []}
 
         connector = RobotConnector(
             addr=config["addr"],
@@ -30,6 +30,6 @@ class RobotPointsRepository:
             connector.authenticate()
             return connector.get_dat_points()
         except Exception:
-            return {}
+            return {"s": [], "w": []}
         finally:
             connector.disconnect()
