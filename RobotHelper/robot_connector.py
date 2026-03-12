@@ -142,7 +142,7 @@ class RobotConnector:
             target_subdir="work"
         )
 
-    def copy_generated_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None) -> List[str]:
+    def copy_generated_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
         """Скачать файлы из папки generated"""
         # Очищаем список и получаем файлы из папки generated
         self._file_list = []
@@ -158,6 +158,9 @@ class RobotConnector:
             file_path = f"KRC:\\R1\\Program\\generated\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
+                # Обрабатываем SRC файлы так же, как и work файлы
+                if process_src and file_name.upper().endswith('.SRC'):
+                    content = self._src_processor.process_src_content(content)
                 # Сохраняем только имя файла, без подпапок
                 local_path = os.path.join(output_dir, os.path.basename(file_name))
                 with open(local_path, "w", encoding="utf-8") as f:

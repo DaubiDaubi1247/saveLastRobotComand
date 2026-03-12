@@ -74,12 +74,27 @@ class RobotStateService:
                 source=source
             )
             if current_line is None and fold_line is None and source:
-                # Файл не найден в указанной папке
-                folder_name = "generated" if source == "generated" else "work"
-                raise FileNotFoundError(f"Исполняемый файл '{db_state.program_names}' не найден в папке {folder_name}, проверьте корректность выбранного метода загрузки программы")
-            program_line = fold_line if fold_line else current_line
-            line_for_point = fold_line if fold_line else current_line
-            point_name = self._extract_point_info(line_for_point)
+                file_exists_on_robot = self._file_repository.check_file_on_robot(
+                    db_state.program_names,
+                    db_state.robot,
+                    source
+                )
+                if file_exists_on_robot:
+                    program_line = f"[Файл '{db_state.program_names}' доступен на роботе]"
+                else:
+                    file_exists_in_service = self._file_repository.check_file_in_service(
+                        db_state.program_names,
+                        db_state.robot
+                    )
+                    if file_exists_in_service:
+                        program_line = f"[Файл '{db_state.program_names}' доступен в service]"
+                    else:
+                        folder_name = "generated" if source == "generated" else "work"
+                        raise FileNotFoundError(f"Исполняемый файл '{db_state.program_names}' не найден в папке {folder_name}, проверьте корректность выбранного метода загрузки программы")
+            else:
+                program_line = fold_line if fold_line else current_line
+                line_for_point = fold_line if fold_line else current_line
+                point_name = self._extract_point_info(line_for_point)
         else:
             db_state.program_names = None
             db_state.snr_c = None

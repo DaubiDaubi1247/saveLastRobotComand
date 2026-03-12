@@ -24,6 +24,65 @@ class ProgramFileRepository:
                     files.append(file.upper())
         return files
 
+    def check_file_on_robot(self, program_name: str, robot_name: str, source: Literal["work", "generated"]) -> bool:
+        """Проверить, есть ли файл программы на роботе в указанной папке."""
+        config = ROBOTS.get(robot_name)
+        if not config:
+            return False
+        
+        addr = config[0]
+        port = config[1]
+        
+        directory = "KRC:\\R1\\Program\\work" if source == "work" else "KRC:\\R1\\Program\\generated"
+
+        connector = RobotConnector(addr=addr, port=port, timeout=5.0)
+        try:
+            connector.connect()
+            connector.authenticate()
+            file_list = connector.get_file_list(directory)
+
+            program_name_upper = program_name.upper()
+            if not program_name_upper.endswith('.SRC'):
+                program_name_upper += '.SRC'
+            file_name_only = os.path.basename(program_name_upper.replace('\\', '/'))
+
+            for file in file_list:
+                if file.upper() == file_name_only or file.upper() == program_name_upper:
+                    return True
+            return False
+        except Exception:
+            return False
+        finally:
+            connector.disconnect()
+
+    def check_file_in_service(self, program_name: str, robot_name: str) -> bool:
+        config = ROBOTS.get(robot_name)
+        if not config:
+            return False
+
+        addr = config[0]
+        port = config[1]
+
+        connector = RobotConnector(addr=addr, port=port, timeout=5.0)
+        try:
+            connector.connect()
+            connector.authenticate()
+            file_list = connector.get_file_list("KRC:\\R1\\Program\\service")
+
+            program_name_upper = program_name.upper()
+            if not program_name_upper.endswith('.SRC'):
+                program_name_upper += '.SRC'
+            file_name_only = os.path.basename(program_name_upper.replace('\\', '/'))
+
+            for file in file_list:
+                if file.upper() == file_name_only or file.upper() == program_name_upper:
+                    return True
+            return False
+        except Exception:
+            return False
+        finally:
+            connector.disconnect()
+
     def download_robot_files(self, robot_name: str, download_work: bool = True, download_generated: bool = True) -> None:
         config = ROBOTS.get(robot_name)
         if not config:
@@ -61,7 +120,7 @@ class ProgramFileRepository:
 
             if download_generated:
                 connector.get_file_list("KRC:\\R1\\Program\\generated")
-                connector.copy_generated_files(output_dir=self._base_dir, robot_name=robot_name)
+                connector.copy_generated_files(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
         except Exception as e:
             raise RuntimeError(f"Ошибка при скачивании файлов с робота {robot_name}: {e}")
         finally:
