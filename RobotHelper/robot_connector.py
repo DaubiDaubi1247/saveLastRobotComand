@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from .file_content_processor import FileContentProcessor
 from .src_file_processor import SrcFileProcessor
+from config import ROBOT_AUTH_KEY
 
 
 def request(command: str, client: socket.socket, timeout: float = 3.0) -> Union[Dict[str, Any], str]:
@@ -51,7 +52,7 @@ class RobotConnector:
             raise RuntimeError("Not connected to robot")
         return request(command, self._client, self._timeout)
 
-    def authenticate(self, key: str = "My_example_KEY") -> bool:
+    def authenticate(self, key: str = ROBOT_AUTH_KEY) -> bool:
         msg = json.dumps({"method": "auth", "params": [key], "id": 1}) + "\n"
         r = self._send_request(msg)
         return isinstance(r, dict) and r.get("result") is True

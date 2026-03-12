@@ -12,9 +12,7 @@ from RobotStateService.robot_points_service import RobotPointsService
 from RobotStateRepository.robot_points_repository import RobotPointsRepository
 from RobotStateRepository.generated_points_repository import GeneratedPointsRepository
 from Api.models.models import RobotStateResponse, RobotProgramResponse
-
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 5000
+from config import SERVER_HOST, SERVER_PORT
 
 _repository: Optional[RobotStateRepository] = None
 _service: Optional[RobotStateService] = None

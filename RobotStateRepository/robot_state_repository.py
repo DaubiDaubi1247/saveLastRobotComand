@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 from influxdb import InfluxDBClient
+from config import INFLUX_HOST, INFLUX_PORT, INFLUX_USERNAME, INFLUX_PASSWORD, INFLUX_DATABASE
 
 
 @dataclass
@@ -21,11 +22,11 @@ class RobotStateRepository:
 
     def __init__(
         self,
-        host: str = '192.168.22.11',
-        port: int = 8086,
-        username: str = 'user',
-        password: str = 'pass',
-        database: str = 'influx'
+        host: str = INFLUX_HOST,
+        port: int = INFLUX_PORT,
+        username: str = INFLUX_USERNAME,
+        password: str = INFLUX_PASSWORD,
+        database: str = INFLUX_DATABASE
     ):
         self._client = InfluxDBClient(
             host=host,
