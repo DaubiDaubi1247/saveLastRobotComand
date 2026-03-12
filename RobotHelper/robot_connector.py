@@ -103,13 +103,18 @@ class RobotConnector:
             return r["result"]
         return None
 
-    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
-        if not self._file_list:
-            self.get_file_list(directory)
+    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True, target_subdir: Optional[str] = None) -> List[str]:
+        # Всегда получаем свежий список файлов для указанной директории
+        self._file_list = []
+        self.get_file_list(directory)
 
         if robot_name:
             output_dir = os.path.join(output_dir, robot_name)
         
+        # Если указан target_subdir, сохраняем файлы в эту подпапку
+        if target_subdir:
+            output_dir = os.path.join(output_dir, target_subdir)
+
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
         src_files = self._get_src_files()
@@ -119,8 +124,8 @@ class RobotConnector:
             if content is not None:
                 if process_src:
                     content = self._src_processor.process_src_content(content)
-                local_path = os.path.join(output_dir, file_name)
-                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                # Сохраняем только имя файла, без подпапок
+                local_path = os.path.join(output_dir, os.path.basename(file_name))
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
                 saved_files.append(file_name)
@@ -133,7 +138,8 @@ class RobotConnector:
             directory="KRC:\\R1\\Program\\work",
             output_dir=output_dir,
             robot_name=robot_name,
-            process_src=process_src
+            process_src=process_src,
+            target_subdir="work"
         )
 
     def copy_generated_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None) -> List[str]:
@@ -143,7 +149,7 @@ class RobotConnector:
         self.get_file_list("KRC:\\R1\\Program\\generated")
 
         if robot_name:
-            output_dir = os.path.join(output_dir, robot_name)
+            output_dir = os.path.join(output_dir, robot_name, "generated")
 
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
@@ -152,8 +158,8 @@ class RobotConnector:
             file_path = f"KRC:\\R1\\Program\\generated\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
-                local_path = os.path.join(output_dir, file_name)
-                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                # Сохраняем только имя файла, без подпапок
+                local_path = os.path.join(output_dir, os.path.basename(file_name))
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)
                 saved_files.append(file_name)

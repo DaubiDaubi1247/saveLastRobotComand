@@ -10,6 +10,20 @@ class ProgramFileRepository:
     def __init__(self, base_dir: str = "robot_files"):
         self._base_dir = base_dir
 
+    def _get_local_work_files(self, robot_name: str) -> List[str]:
+        """Получить список .src файлов в локальной папке work робота."""
+        robot_dir = os.path.join(self._base_dir, robot_name)
+        work_dir = os.path.join(robot_dir, "work")
+        if not os.path.exists(work_dir):
+            return []
+        
+        files = []
+        for root, dirs, filenames in os.walk(work_dir):
+            for file in filenames:
+                if file.upper().endswith('.SRC'):
+                    files.append(file.upper())
+        return files
+
     def download_robot_files(self, robot_name: str, download_work: bool = True, download_generated: bool = True) -> None:
         config = ROBOTS.get(robot_name)
         if not config:
@@ -19,23 +33,37 @@ class ProgramFileRepository:
         port = config[1]
 
         robot_dir = os.path.join(self._base_dir, robot_name)
-        if os.path.exists(robot_dir):
-            shutil.rmtree(robot_dir)
-        
+
         connector = RobotConnector(addr=addr, port=port, timeout=5.0)
         try:
             connector.connect()
             connector.authenticate()
 
             if download_work:
-                connector.get_file_list("KRC:\\R1\\Program\\work")
-                connector.copy_work_files(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
+                # Получаем список файлов с робота
+                robot_file_list = connector.get_file_list("KRC:\\R1\\Program\\work")
+                robot_src_files = set(f.upper() for f in robot_file_list if f.upper().endswith('.SRC'))
+                
+                # Получаем список локальных файлов
+                local_files = self._get_local_work_files(robot_name)
+                
+                # Сравниваем списки
+                if local_files and robot_src_files == set(local_files):
+                    # Списки совпадают — файлы уже актуальны, не скачиваем заново
+                    pass
+                else:
+                    # Списки отличаются или файлов нет — удаляем и скачиваем заново
+                    if os.path.exists(robot_dir):
+                        work_dir = os.path.join(robot_dir, "work")
+                        if os.path.exists(work_dir):
+                            shutil.rmtree(work_dir)
+                    connector.copy_work_files(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
 
             if download_generated:
                 connector.get_file_list("KRC:\\R1\\Program\\generated")
                 connector.copy_generated_files(output_dir=self._base_dir, robot_name=robot_name)
         except Exception as e:
-            raise RuntimeError(f"Failed to download files from robot {robot_name}: {e}")
+            raise RuntimeError(f"Ошибка при скачивании файлов с робота {robot_name}: {e}")
         finally:
             connector.disconnect()
 
@@ -84,13 +112,6 @@ class ProgramFileRepository:
             return full_path
 
         return None
-
-    def find_program_file(self, program_name: str, robot_name: str, source: Literal["work", "generated"]) -> Optional[str]:
-        """
-        Ищет файл программы в указанной папке (work или generated).
-        Возвращает путь к файлу или None, если файл не найден.
-        """
-        return self._find_file(program_name, robot_name, source=source)
 
     def get_line(self, program_name: str, line_number: int, robot_name: Optional[str] = None, source: Optional[Literal["work", "generated"]] = None) -> Optional[str]:
         file_path = self._find_file(program_name, robot_name, source=source)
@@ -153,16 +174,3 @@ class ProgramFileRepository:
             pass
 
         return None, None
-
-    def get_file_content(self, program_name: str) -> Optional[List[str]]:
-        file_path = self._find_file(program_name)
-        if not file_path:
-            return None
-
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.readlines()
-        except Exception:
-            pass
-
-        return None

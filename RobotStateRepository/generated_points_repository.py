@@ -29,7 +29,7 @@ class GeneratedPointsRepository:
             connector.connect()
             connector.authenticate()
             return connector.get_dat_points_by_file(directory="KRC:\\R1\\Program\\generated")
-        except Exception:
-            return {}
+        except Exception as e:
+            raise RuntimeError(f"Ошибка получения generated точек для робота {robot_name}: {e}")
         finally:
             connector.disconnect()

@@ -29,7 +29,7 @@ class RobotPointsRepository:
             connector.connect()
             connector.authenticate()
             return connector.get_dat_points()
-        except Exception:
-            return {"s": [], "w": []}
+        except Exception as e:
+            raise RuntimeError(f"Ошибка получения точек для робота {robot_name}: {e}")
         finally:
             connector.disconnect()

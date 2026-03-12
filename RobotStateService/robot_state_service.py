@@ -92,12 +92,6 @@ class RobotStateService:
             point_name=point_name
         )
 
-    def get_robot_state(self, robot: str) -> RobotState:
-        db_state = self._repository.get_robot_state(robot)
-        if db_state is None:
-            return RobotState(workshop="", robot=robot)
-        return self._map_to_robot_state(db_state)
-
     def get_all_robots_state(self) -> List[RobotState]:
         db_states = self._repository.get_all_robots_state()
         return [self._map_to_robot_state(s) for s in db_states]
