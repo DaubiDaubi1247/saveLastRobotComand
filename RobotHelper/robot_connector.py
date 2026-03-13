@@ -5,6 +5,7 @@ import os
 from typing import Any, Dict, List, Optional, Union
 from .file_content_processor import FileContentProcessor
 from .src_file_processor import SrcFileProcessor
+from .robot_paths import RobotProgramPath, LocalPath
 from config import ROBOT_AUTH_KEY
 
 
@@ -57,7 +58,7 @@ class RobotConnector:
         r = self._send_request(msg)
         return isinstance(r, dict) and r.get("result") is True
 
-    def get_file_list(self, directory: str = "KRC:\\R1\\Program\\work") -> List[str]:
+    def get_file_list(self, directory: str = RobotProgramPath.WORK) -> List[str]:
         msg = json.dumps({
             "method": "File_NameList",
             "params": [directory, 511, 127],
@@ -103,7 +104,7 @@ class RobotConnector:
             return r["result"]
         return None
 
-    def copy_files_to_local(self, directory: str = "KRC:\\R1\\Program\\work", output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True, target_subdir: Optional[str] = None) -> List[str]:
+    def copy_files_to_local(self, directory: str = RobotProgramPath.WORK, output_dir: str = LocalPath.BASE_DIR, robot_name: Optional[str] = None, process_src: bool = True, target_subdir: Optional[str] = None) -> List[str]:
         # Всегда получаем свежий список файлов для указанной директории
         self._file_list = []
         self.get_file_list(directory)
@@ -132,30 +133,30 @@ class RobotConnector:
 
         return saved_files
 
-    def copy_work_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
+    def copy_work_files(self, output_dir: str = LocalPath.BASE_DIR, robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
         """Скачать файлы из рабочей папки KRC:\\R1\\Program\\work"""
         return self.copy_files_to_local(
-            directory="KRC:\\R1\\Program\\work",
+            directory=RobotProgramPath.WORK,
             output_dir=output_dir,
             robot_name=robot_name,
             process_src=process_src,
-            target_subdir="work"
+            target_subdir=LocalPath.WORK_SUBDIR
         )
 
-    def copy_generated_files(self, output_dir: str = "robot_files", robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
+    def copy_generated_files(self, output_dir: str = LocalPath.BASE_DIR, robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
         """Скачать файлы из папки generated"""
         # Очищаем список и получаем файлы из папки generated
         self._file_list = []
-        self.get_file_list("KRC:\\R1\\Program\\generated")
+        self.get_file_list(RobotProgramPath.GENERATED)
 
         if robot_name:
-            output_dir = os.path.join(output_dir, robot_name, "generated")
+            output_dir = os.path.join(output_dir, robot_name, LocalPath.GENERATED_SUBDIR)
 
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
 
         for file_name in self._file_list:
-            file_path = f"KRC:\\R1\\Program\\generated\\{file_name}"
+            file_path = f"{RobotProgramPath.GENERATED}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 # Обрабатываем SRC файлы так же, как и work файлы
@@ -169,14 +170,14 @@ class RobotConnector:
 
         return saved_files
 
-    def get_dat_points(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, List[List[float]]]:
+    def get_dat_points(self, directory: str = RobotProgramPath.WORK) -> Dict[str, List[List[float]]]:
         self.get_file_list(directory)
 
         dat_files = self._get_dat_files()
         result: Dict[str, List[List[float]]] = {}
 
         for file_name in dat_files:
-            file_path = f"{directory}\\{file_name}"
+            file_path = f"{directory.value}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)
@@ -187,14 +188,14 @@ class RobotConnector:
 
         return result
 
-    def get_dat_points_by_file(self, directory: str = "KRC:\\R1\\Program\\work") -> Dict[str, Dict[str, List[List[float]]]]:
+    def get_dat_points_by_file(self, directory: str = RobotProgramPath.WORK) -> Dict[str, Dict[str, List[List[float]]]]:
         self.get_file_list(directory)
 
         dat_files = self._get_dat_files()
         result: Dict[str, Dict[str, List[List[float]]]] = {}
 
         for file_name in dat_files:
-            file_path = f"{directory}\\{file_name}"
+            file_path = f"{directory.value}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)
@@ -208,8 +209,3 @@ class RobotConnector:
 
     def __exit__(self):
         self.disconnect()
-
-# r = RobotConnector(addr="10.1.0.82", port=3333)
-# r.connect()
-# r.authenticate()
-# r.copy_files_to_local()

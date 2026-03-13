@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, List, Literal
+from typing import Any, AsyncGenerator, Dict, List
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, Request
 from RobotHelper.robot_poller import poll_robots
 from RobotStateService.robot_state_service import RobotStateService
 from RobotStateRepository.robot_state_repository import RobotStateRepository
-from RobotStateRepository.program_file_repository import ProgramFileRepository
+from RobotStateRepository.program_file_repository import ProgramFileRepository, ProgramSource
 from RobotStateService.robot_points_service import RobotPointsService
 from RobotStateRepository.robot_points_repository import RobotPointsRepository
 from RobotStateRepository.generated_points_repository import GeneratedPointsRepository
@@ -18,17 +18,17 @@ from config import SERVER_HOST, SERVER_PORT
 async def _get_robot_program_with_source(
     robot_name: str,
     service: RobotStateService,
-    source: Literal["work", "generated"]
+    source: ProgramSource
 ) -> RobotProgramResponse:
     """Helper-функция для получения программы робота из указанной папки."""
     try:
         service.download_robot_files(
             robot_name,
-            download_work=(source == "work"),
-            download_generated=(source == "generated")
+            download_work=(source == ProgramSource.WORK),
+            download_generated=(source == ProgramSource.GENERATED)
         )
     except Exception as e:
-        folder_name = "work" if source == "work" else "generated"
+        folder_name = "work" if source == ProgramSource.WORK else "generated"
         raise HTTPException(status_code=500, detail=f"Ошибка при скачивании файлов {folder_name}: {str(e)}")
 
     try:
@@ -91,12 +91,12 @@ async def get_robots(service: RobotStateService = Depends(get_robot_state_servic
 
 @app.get("/api/robots/{robot_name}/program", response_model=RobotProgramResponse)
 async def get_robot_program(robot_name: str, service: RobotStateService = Depends(get_robot_state_service)) -> RobotProgramResponse:
-    return await _get_robot_program_with_source(robot_name, service, source="work")
+    return await _get_robot_program_with_source(robot_name, service, source=ProgramSource.WORK)
 
 
 @app.get("/api/robots/{robot_name}/program/generated", response_model=RobotProgramResponse)
 async def get_robot_program_generated(robot_name: str, service: RobotStateService = Depends(get_robot_state_service)) -> RobotProgramResponse:
-    return await _get_robot_program_with_source(robot_name, service, source="generated")
+    return await _get_robot_program_with_source(robot_name, service, source=ProgramSource.GENERATED)
 
 
 @app.get("/api/robots/{robot_name}/points", response_model=Dict[str, Any])
