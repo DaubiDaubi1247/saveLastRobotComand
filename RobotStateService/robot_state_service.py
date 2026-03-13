@@ -71,7 +71,8 @@ class RobotStateService:
                 db_state.program_names,
                 db_state.snr_c,
                 db_state.robot,
-                source=source
+                source=source,
+                cleanup_opposite=True
             )
             if current_line is None and fold_line is None and source:
                 file_exists_on_robot = self._file_repository.check_file_on_robot(

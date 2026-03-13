@@ -1,5 +1,6 @@
 import os
 import shutil
+import threading
 from typing import Optional, List, Literal
 from RobotHelper.robot_connector import RobotConnector
 from RobotHelper.robot_poller import ROBOTS
@@ -9,6 +10,15 @@ class ProgramFileRepository:
 
     def __init__(self, base_dir: str = "robot_files"):
         self._base_dir = base_dir
+
+    def _cleanup_opposite_folder(self, robot_name: str, source: Literal["work", "generated"]) -> None:
+        """Удалить содержимое противоположной папки."""
+        opposite = "generated" if source == "work" else "work"
+        robot_dir = os.path.join(self._base_dir, robot_name)
+        opposite_dir = os.path.join(robot_dir, opposite)
+
+        if os.path.exists(opposite_dir):
+            shutil.rmtree(opposite_dir)
 
     def _get_local_work_files(self, robot_name: str) -> List[str]:
         """Получить список .src файлов в локальной папке work робота."""
@@ -149,30 +159,17 @@ class ProgramFileRepository:
                             for file in files:
                                 if file.upper() == file_name_only or file.upper() == program_name:
                                     return os.path.join(root, file)
-                    return None  # Файл в указанном source не найден
+                    return None 
                 else:
-                    # Ищем во всех подпапках
+                    # Ищем во всех подпапках робота
                     for root, dirs, files in os.walk(robot_dir):
                         for file in files:
                             if file.upper() == file_name_only or file.upper() == program_name:
                                 return os.path.join(root, file)
-
-        # Если не нашли или robot_name не указан, ищем во всех папках
-        for root, dirs, files in os.walk(self._base_dir):
-            for file in files:
-                if file.upper() == file_name_only or file.upper() == program_name:
-                    return os.path.join(root, file)
-
-        # Пробуем найти по полному пути
-        normalized = program_name.lstrip('\\/')
-        normalized = normalized.replace('/', os.sep).replace('\\', os.sep)
-        full_path = os.path.join(self._base_dir, normalized)
-        if os.path.exists(full_path):
-            return full_path
-
+                    return None
         return None
 
-    def get_line(self, program_name: str, line_number: int, robot_name: Optional[str] = None, source: Optional[Literal["work", "generated"]] = None) -> Optional[str]:
+    def get_line(self, program_name: str, line_number: int, robot_name: Optional[str] = None, source: Optional[Literal["work", "generated"]] = None, cleanup_opposite: bool = False) -> Optional[str]:
         file_path = self._find_file(program_name, robot_name, source=source)
 
         if not file_path and robot_name:
@@ -181,6 +178,14 @@ class ProgramFileRepository:
 
         if not file_path:
             return None
+
+        # Если файл найден и указана очистка — запустить в фоне
+        if cleanup_opposite and source and robot_name:
+            threading.Thread(
+                target=self._cleanup_opposite_folder,
+                args=(robot_name, source),
+                daemon=True
+            ).start()
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -192,7 +197,7 @@ class ProgramFileRepository:
 
         return None
 
-    def get_line_with_fold_context(self, program_name: str, line_number: int, robot_name: Optional[str] = None, source: Optional[Literal["work", "generated"]] = None) -> tuple[Optional[str], Optional[str]]:
+    def get_line_with_fold_context(self, program_name: str, line_number: int, robot_name: Optional[str] = None, source: Optional[Literal["work", "generated"]] = None, cleanup_opposite: bool = False) -> tuple[Optional[str], Optional[str]]:
         file_path = self._find_file(program_name, robot_name, source=source)
 
         if not file_path and robot_name:
@@ -202,6 +207,14 @@ class ProgramFileRepository:
         if not file_path:
             return None, None
 
+        # Если файл найден и указана очистка — запустить в фоне
+        if cleanup_opposite and source and robot_name:
+            threading.Thread(
+                target=self._cleanup_opposite_folder,
+                args=(robot_name, source),
+                daemon=True
+            ).start()
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
@@ -210,7 +223,7 @@ class ProgramFileRepository:
                     return None, None
 
                 current_line = lines[line_number - 1].rstrip('\n')
-                
+
                 # Ищем ближайший ;FOLD выше текущей строки (пропуская FOLD Parameters)
                 fold_line = None
 
