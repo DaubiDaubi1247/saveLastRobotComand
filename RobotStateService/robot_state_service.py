@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import List, Optional, Literal
+from typing import List, Optional
 import re
 from RobotStateRepository.robot_state_repository import RobotStateRepository, RobotStateDB, RobotProgramDB
-from RobotStateRepository.program_file_repository import ProgramFileRepository
+from RobotStateRepository.program_file_repository import ProgramFileRepository, ProgramSource
 
 
 @dataclass
@@ -61,7 +61,7 @@ class RobotStateService:
             robot=db_state.robot
         )
 
-    def _map_to_robot_program(self, db_state: RobotProgramDB, source: Optional[Literal["work", "generated"]] = None) -> RobotProgram:
+    def _map_to_robot_program(self, db_state: RobotProgramDB, source: Optional[ProgramSource] = None) -> RobotProgram:
         program_line = None
         point_name = None
         fold_line = None
@@ -88,9 +88,9 @@ class RobotStateService:
                         db_state.robot
                     )
                     if file_exists_in_service:
-                        program_line = f"[Файл '{db_state.program_names}' доступен в service]"
+                        program_line = "выполняется строка из сервисного файла"
                     else:
-                        folder_name = "generated" if source == "generated" else "work"
+                        folder_name = "generated" if source == ProgramSource.GENERATED else "work"
                         raise FileNotFoundError(f"Исполняемый файл '{db_state.program_names}' не найден в папке {folder_name}, проверьте корректность выбранного метода загрузки программы")
             else:
                 program_line = fold_line if fold_line else current_line
@@ -112,7 +112,7 @@ class RobotStateService:
         db_states = self._repository.get_all_robots_state()
         return [self._map_to_robot_state(s) for s in db_states]
 
-    def get_robot_program(self, robot: str, source: Optional[Literal["work", "generated"]] = None) -> RobotProgram:
+    def get_robot_program(self, robot: str, source: Optional[ProgramSource] = None) -> RobotProgram:
         db_state = self._repository.get_robot_program_info(robot)
         if db_state is None:
             return RobotProgram(robot=robot)

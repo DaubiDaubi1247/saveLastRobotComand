@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Any
 from RobotHelper.robot_connector import RobotConnector
+from RobotHelper.robot_paths import RobotProgramPath
 from RobotHelper.robot_poller import ROBOTS
 
 
@@ -28,7 +29,7 @@ class GeneratedPointsRepository:
         try:
             connector.connect()
             connector.authenticate()
-            return connector.get_dat_points_by_file(directory="KRC:\\R1\\Program\\generated")
+            return connector.get_dat_points_by_file(directory=RobotProgramPath.GENERATED)
         except Exception as e:
             raise RuntimeError(f"Ошибка получения generated точек для робота {robot_name}: {e}")
         finally:
