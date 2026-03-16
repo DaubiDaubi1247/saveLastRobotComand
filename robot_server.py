@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, List
+from typing import Any, AsyncGenerator, Dict, List, Callable, Awaitable
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import Response
 from RobotHelper.robot_poller import poll_robots
 from service.robot_state_service import RobotStateService
 from repository.robot_state_repository import RobotStateRepository
@@ -76,7 +77,7 @@ app = FastAPI(title="Robot Server", lifespan=lifespan)
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     start_time = time.time()
     logger.info(f"Запрос: {request.method} {request.url.path}")
 

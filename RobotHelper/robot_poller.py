@@ -82,7 +82,6 @@ class RobotPoller:
             info = get_program_info(config[0], int(config[1]))
             self._send_to_telegraf(info, config[3])
         except socket.timeout:
-            # Таймауты не логируем — это ожидаемая ситуация для недоступных роботов
             pass
         except Exception as e:
             logger.error(f"{key}: {e}")

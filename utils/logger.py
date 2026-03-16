@@ -1,13 +1,16 @@
 import logging
 import sys
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
 
 
 def setup_logger(
     name: str = "robot_server",
     level: int = logging.INFO,
     log_file: str = "robot_server.log",
-    format_string: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format_string: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    max_bytes: int = 10 * 1024 * 1024,  # 10 МБ
+    backup_count: int = 5  # 5 последних файлов
 ) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -23,7 +26,7 @@ def setup_logger(
     logger.addHandler(console_handler)
 
     log_path = Path(log_file)
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler = RotatingFileHandler(log_path, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8")
     file_handler.setLevel(level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
