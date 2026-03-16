@@ -5,12 +5,12 @@ from typing import Any, AsyncGenerator, Dict, List
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, Request
 from RobotHelper.robot_poller import poll_robots
-from RobotStateService.robot_state_service import RobotStateService
-from RobotStateRepository.robot_state_repository import RobotStateRepository
-from RobotStateRepository.program_file_repository import ProgramFileRepository, ProgramSource
-from RobotStateService.robot_points_service import RobotPointsService
-from RobotStateRepository.robot_points_repository import RobotPointsRepository
-from RobotStateRepository.generated_points_repository import GeneratedPointsRepository
+from service.robot_state_service import RobotStateService
+from repository.robot_state_repository import RobotStateRepository
+from repository.program_file_repository import ProgramFileRepository, ProgramSource
+from service.robot_points_service import RobotPointsService
+from repository.robot_points_repository import RobotPointsRepository
+from repository.generated_points_repository import GeneratedPointsRepository
 from Api.models.models import RobotStateResponse, RobotProgramResponse
 from config import SERVER_HOST, SERVER_PORT
 from utils.logger import logger

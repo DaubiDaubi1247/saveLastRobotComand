@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List, Optional
 import re
-from RobotStateRepository.robot_state_repository import RobotStateRepository, RobotStateDB, RobotProgramDB
-from RobotStateRepository.program_file_repository import ProgramFileRepository, ProgramSource
+from repository.robot_state_repository import RobotStateRepository, RobotStateDB, RobotProgramDB
+from repository.program_file_repository import ProgramFileRepository, ProgramSource
 
 
 @dataclass

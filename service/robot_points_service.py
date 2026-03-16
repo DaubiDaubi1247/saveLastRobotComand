@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
-from RobotStateRepository.robot_points_repository import RobotPointsRepository
-from RobotStateRepository.generated_points_repository import GeneratedPointsRepository
+from repository.robot_points_repository import RobotPointsRepository
+from repository.generated_points_repository import GeneratedPointsRepository
 
 
 class RobotPointsService:
