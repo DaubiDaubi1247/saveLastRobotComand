@@ -120,7 +120,8 @@ class RobotConnector:
         saved_files: List[str] = []
         src_files = self._get_src_files()
         for file_name in src_files:
-            file_path = f"{directory}\\{file_name}"
+            dir_path = directory.value if isinstance(directory, RobotProgramPath) else directory
+            file_path = f"{dir_path}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 if process_src:
@@ -156,7 +157,7 @@ class RobotConnector:
         saved_files: List[str] = []
 
         for file_name in self._file_list:
-            file_path = f"{RobotProgramPath.GENERATED}\\{file_name}"
+            file_path = f"{RobotProgramPath.GENERATED.value}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 # Обрабатываем SRC файлы так же, как и work файлы
@@ -177,7 +178,8 @@ class RobotConnector:
         result: Dict[str, List[List[float]]] = {}
 
         for file_name in dat_files:
-            file_path = f"{directory.value}\\{file_name}"
+            dir_path = directory.value if isinstance(directory, RobotProgramPath) else directory
+            file_path = f"{dir_path}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)
@@ -195,7 +197,8 @@ class RobotConnector:
         result: Dict[str, Dict[str, List[List[float]]]] = {}
 
         for file_name in dat_files:
-            file_path = f"{directory.value}\\{file_name}"
+            dir_path = directory.value if isinstance(directory, RobotProgramPath) else directory
+            file_path = f"{dir_path}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)

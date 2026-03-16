@@ -8,6 +8,7 @@ from typing import Dict, Optional, Tuple
 from telegraf.client import TelegrafClient
 from .robot_connector import request
 from config import POLL_INTERVAL, TELEGRAF_HOST, TELEGRAF_PORT, ROBOTS
+from utils.logger import logger
 
 
 @dataclass
@@ -80,8 +81,10 @@ class RobotPoller:
         try:
             info = get_program_info(config[0], int(config[1]))
             self._send_to_telegraf(info, config[3])
+        except socket.timeout:
+            pass
         except Exception as e:
-            print(f"{key}: {e}")
+            logger.error(f"{key}: {e}")
 
     def poll_all(self) -> None:
         for key, config in self._robots.items():
