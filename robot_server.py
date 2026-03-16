@@ -13,6 +13,9 @@ from RobotStateRepository.robot_points_repository import RobotPointsRepository
 from RobotStateRepository.generated_points_repository import GeneratedPointsRepository
 from Api.models.models import RobotStateResponse, RobotProgramResponse
 from config import SERVER_HOST, SERVER_PORT
+from utils.logger import logger
+import time
+import traceback
 
 
 async def _get_robot_program_with_source(
@@ -47,6 +50,7 @@ async def _get_robot_program_with_source(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("Запуск приложения")
     file_repository = ProgramFileRepository()
     repository = RobotStateRepository()
     service = RobotStateService(repository, file_repository)
@@ -54,13 +58,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     generated_points_repository = GeneratedPointsRepository()
     points_service = RobotPointsService(points_repository, generated_points_repository)
 
-    # Сохраняем сервисы в app.state для доступа через Depends
     app.state.robot_state_service = service
     app.state.robot_points_service = points_service
 
     task = asyncio.create_task(poll_robots())
+    logger.info("Запущен фоновый опрос роботов")
     yield
     task.cancel()
+    logger.info("Остановка приложения")
     try:
         await task
     except asyncio.CancelledError:
@@ -68,6 +73,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title="Robot Server", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    logger.info(f"Запрос: {request.method} {request.url.path}")
+
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        process_time = time.time() - start_time
+        logger.error(f"Ошибка: {request.method} {request.url.path} - {type(e).__name__}: {str(e)}")
+        logger.error(f"Traceback:\n{traceback.format_exc()}")
+        raise
+
+    process_time = time.time() - start_time
+    logger.info(f"Ответ: {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)")
+
+    return response
 
 
 def get_robot_state_service(request: Request) -> RobotStateService:
@@ -80,6 +104,7 @@ def get_robot_points_service(request: Request) -> RobotPointsService:
 
 @app.get("/health")
 async def health() -> Dict[str, str]:
+    logger.debug("Health check запрос")
     return {"status": "ok"}
 
 
@@ -116,6 +141,7 @@ async def get_robot_points_generated(robot_name: str, service: RobotPointsServic
 
 
 def main() -> None:
+    logger.info(f"Запуск сервера на {SERVER_HOST}:{SERVER_PORT}")
     uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT, log_level="info")
 
 
