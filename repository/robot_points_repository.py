@@ -15,10 +15,10 @@ class RobotPointsRepository:
             "timeout": config[2] / 1000.0
         }
 
-    def get_robot_points(self, robot_name: str) -> Dict[str, List[List[float]]]:
+    def get_robot_points(self, robot_name: str) -> Dict[str, Dict[str, List[List[float]]]]:
         config = self._get_robot_config(robot_name)
         if not config:
-            return {"s": [], "w": []}
+            return {}
 
         connector = RobotConnector(
             addr=config["addr"],
@@ -28,7 +28,7 @@ class RobotPointsRepository:
         try:
             connector.connect()
             connector.authenticate()
-            return connector.get_dat_points()
+            return connector.get_dat_points_by_file()
         except Exception as e:
             raise RuntimeError(f"Ошибка получения точек для робота {robot_name}: {e}")
         finally:

@@ -125,11 +125,11 @@ async def get_robot_program_generated(robot_name: str, service: RobotStateServic
     return await _get_robot_program_with_source(robot_name, service, source=ProgramSource.GENERATED)
 
 
-@app.get("/api/robots/{robot_name}/points", response_model=Dict[str, Any])
-async def get_robot_points(robot_name: str, service: RobotPointsService = Depends(get_robot_points_service)) -> Dict[str, Any]:
+@app.get("/api/robots/{robot_name}/points", response_model=Dict[str, Dict[str, List[List[float]]]])
+async def get_robot_points(robot_name: str, service: RobotPointsService = Depends(get_robot_points_service)) -> Dict[str, Dict[str, List[List[float]]]]:
     try:
         return service.get_robot_points(robot_name)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -145,7 +145,7 @@ class RobotConnector:
         )
 
     def copy_generated_files(self, output_dir: str = LocalPath.BASE_DIR, robot_name: Optional[str] = None, process_src: bool = True) -> List[str]:
-        """Скачать файлы из папки generated"""
+        """Скачать файлы из папки generated (только .src файлы)"""
         # Очищаем список и получаем файлы из папки generated
         self._file_list = []
         self.get_file_list(RobotProgramPath.GENERATED)
@@ -156,12 +156,15 @@ class RobotConnector:
         os.makedirs(output_dir, exist_ok=True)
         saved_files: List[str] = []
 
-        for file_name in self._file_list:
+        # Фильтруем только .src файлы
+        src_files = [f for f in self._file_list if f.upper().endswith('.SRC')]
+
+        for file_name in src_files:
             file_path = f"{RobotProgramPath.GENERATED.value}\\{file_name}"
             content = self._copy_file_to_mem(file_path)
             if content is not None:
-                # Обрабатываем SRC файлы так же, как и work файлы
-                if process_src and file_name.upper().endswith('.SRC'):
+                # Обрабатываем SRC файлы
+                if process_src:
                     content = self._src_processor.process_src_content(content)
                 # Сохраняем только имя файла, без подпапок
                 local_path = os.path.join(output_dir, os.path.basename(file_name))
@@ -202,7 +205,9 @@ class RobotConnector:
             content = self._copy_file_to_mem(file_path)
             if content is not None:
                 points = self._processor.process_dat_content_to_arrays(content)
-                result[file_name] = points
+                # Пропускаем файлы без точек (пустой результат)
+                if points:
+                    result[file_name] = points
 
         return result
 
