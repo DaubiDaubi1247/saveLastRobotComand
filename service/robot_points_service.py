@@ -13,5 +13,5 @@ class RobotPointsService:
         return self._repository.get_robot_points(robot_name)
 
     def get_robot_points_generated(self, robot_name: str) -> List[Dict[str, Any]]:
-        points = self._generated_repository.get_robot_points(robot_name)
-        return [{"file_name": k, "points": v} for k, v in points.items()]
+        # Репозиторий уже возвращает список в правильном порядке
+        return self._generated_repository.get_robot_points(robot_name)

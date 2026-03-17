@@ -13,7 +13,7 @@ class FileContentProcessor:
         self._coords_pattern = re.compile(
             r'X\s*(-?\d+\.?\d*),\s*Y\s*(-?\d+\.?\d*),\s*Z\s*(-?\d+\.?\d*)'
         )
-        self._name_pattern = re.compile(r'\b(X[SW])(\d+_\d+)\s*=')
+        self._name_pattern = re.compile(r'\b(X[A-Z]+)(\d+_\d+)\s*=')
         self._decl_pattern = re.compile(r'\bDECL\s+TSg_PCollCD_T\s+(\S+)')
         self._arc_pattern = re.compile(r'\bDECL\s+stArcDat_T\s+')
 
@@ -28,8 +28,8 @@ class FileContentProcessor:
         if not name_match:
             return None
 
-        point_type = name_match.group(1)
-        point_num = name_match.group(2)
+        point_type = name_match.group(1)  # например, 'XS', 'XW', 'XSE', 'XSS'
+        point_num = name_match.group(2)   # например, '2_1'
 
         point = [
             float(coords_match.group(1)),
@@ -37,10 +37,9 @@ class FileContentProcessor:
             float(coords_match.group(3))
         ]
 
-        if point_type == "XS":
-            key = f"s{point_num}"
-        else:
-            key = f"w{point_num}"
+        # Формируем ключ: убираем ведущий 'X', переводим в нижний регистр
+        # XS → s, XW → w, XSE → se, XSS → ss
+        key = f"{point_type[1:].lower()}{point_num}"
 
         return {key: point}
 
