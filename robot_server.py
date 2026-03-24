@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, List, Callable, Awaitable
 import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from RobotHelper.robot_poller import poll_robots
 from service.robot_state_service import RobotStateService
 from repository.robot_state_repository import RobotStateRepository
@@ -91,6 +91,27 @@ async def log_requests(request: Request, call_next: Callable[[Request], Awaitabl
 
     process_time = time.time() - start_time
     logger.info(f"Ответ: {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)")
+
+    if 400 <= response.status_code < 500:
+        body_content = b"".join([chunk async for chunk in response.body_iterator])  # type: ignore[misc]
+        error_detail = body_content.decode("utf-8", errors="replace")
+        logger.warning(f"Ошибка клиента ({response.status_code}): {request.method} {request.url.path} - {error_detail}")
+        return StreamingResponse(
+            status_code=response.status_code,
+            content=iter([body_content]),
+            headers=response.headers,
+            media_type=response.media_type
+        )
+    elif 500 <= response.status_code < 600:
+        body_content = b"".join([chunk async for chunk in response.body_iterator])  # type: ignore[misc]
+        error_detail = body_content.decode("utf-8", errors="replace")
+        logger.error(f"Ошибка сервера ({response.status_code}): {request.method} {request.url.path} - {error_detail}")
+        return StreamingResponse(
+            status_code=response.status_code,
+            content=iter([body_content]),
+            headers=response.headers,
+            media_type=response.media_type
+        )
 
     return response
 
