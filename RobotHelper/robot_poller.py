@@ -36,15 +36,8 @@ def get_program_info(addr: str, port: int, timeout: float = 3.0) -> ProgramInfo:
     with socket.create_connection((addr, port), timeout) as client:
         r = request(msg, client, timeout)
 
-    if isinstance(r, dict) and "result" in r:
-        result_str = r["result"]
-    elif isinstance(r, str):
-        result_str = r
-    else:
-        result_str = str(r)
-
+    result_str = r.get("result", str(r)) if isinstance(r, dict) else str(r)
     return parse_pro_ip_result(result_str)
-
 
 class RobotPoller:
 
@@ -61,7 +54,7 @@ class RobotPoller:
 
     def _poll_robot(self, key: str, config: Tuple[str, int, int, str]) -> None:
         try:
-            info = get_program_info(config[0], int(config[1]))
+            info = get_program_info(config[0], config[1])
             self._send_to_telegraf(info, config[3])
         except socket.timeout:
             pass

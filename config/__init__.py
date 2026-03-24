@@ -1,15 +1,57 @@
 """Конфигурация приложения."""
+import os
 from typing import Dict, Tuple
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла
+load_dotenv()
+
+
+def _parse_robots_config() -> Dict[str, Tuple[str, int, int, str]]:
+    """Парсит конфигурацию роботов из переменных окружения."""
+    robots = {}
+    prefix = "ROBOT_"
+    
+    for key, value in os.environ.items():
+        if key.startswith(prefix):
+            robot_name = key[len(prefix):]
+            parts = value.split(":")
+            if len(parts) == 4:
+                ip, port, timeout, tag = parts
+                robots[robot_name] = (ip, int(port), int(timeout), tag)
+    
+    return robots
+
+
+# Настройки сервера
+SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
+SERVER_PORT = int(os.getenv("SERVER_PORT", "5000"))
+
+# Настройки InfluxDB
+INFLUX_HOST = os.getenv("INFLUX_HOST", "192.168.22.11")
+INFLUX_PORT = int(os.getenv("INFLUX_PORT", "8086"))
+INFLUX_USERNAME = os.getenv("INFLUX_USERNAME", "user")
+INFLUX_PASSWORD = os.getenv("INFLUX_PASSWORD", "pass")
+INFLUX_DATABASE = os.getenv("INFLUX_DATABASE", "influx")
 
 # Настройки Telegraf
-TELEGRAF_HOST = "192.168.22.11"
-TELEGRAF_PORT = 8092
+TELEGRAF_HOST = os.getenv("TELEGRAF_HOST", "192.168.22.11")
+TELEGRAF_PORT = int(os.getenv("TELEGRAF_PORT", "8092"))
 
 # Интервал опроса роботов (секунды)
-POLL_INTERVAL = 15
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "15"))
 
-# Конфигурация роботов: {имя: (IP, порт, таймаут, тег для Telegraf)}
-ROBOTS: Dict[str, Tuple[str, int, int, str]] = {
+# Ключ аутентификации для роботов
+ROBOT_AUTH_KEY = os.getenv("ROBOT_AUTH_KEY", "My_example_KEY")
+
+# Настройки логирования
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_FILE = os.getenv("LOG_FILE", "robot_server.log")
+LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", "10485760"))
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+
+# Конфигурация роботов по умолчанию (если не заданы в .env)
+_DEFAULT_ROBOTS: Dict[str, Tuple[str, int, int, str]] = {
     'W8R1': ('10.1.0.82', 3333, 2000, 'W8R1'),
     'W8R2': ('10.1.0.84', 3333, 2000, 'W8R2'),
     'W8R3': ('10.1.0.86', 3333, 2000, 'W8R3'),
@@ -29,16 +71,5 @@ ROBOTS: Dict[str, Tuple[str, int, int, str]] = {
     'test': ('192.168.6.197', 3333, 2000, 'test')
 }
 
-# Настройки InfluxDB
-INFLUX_HOST = '192.168.22.11'
-INFLUX_PORT = 8086
-INFLUX_USERNAME = 'user'
-INFLUX_PASSWORD = 'pass'
-INFLUX_DATABASE = 'influx'
-
-# Настройки сервера
-SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 5000
-
-# Ключ аутентификации для роботов
-ROBOT_AUTH_KEY = "My_example_KEY"
+# Конфигурация роботов: из .env или значения по умолчанию
+ROBOTS = _parse_robots_config() or _DEFAULT_ROBOTS

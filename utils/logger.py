@@ -6,28 +6,35 @@ from logging.handlers import RotatingFileHandler
 
 def setup_logger(
     name: str = "robot_server",
-    level: int = logging.INFO,
-    log_file: str = "robot_server.log",
-    format_string: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    max_bytes: int = 10 * 1024 * 1024,  # 10 МБ
-    backup_count: int = 5  # 5 последних файлов
 ) -> logging.Logger:
+    from config import LOG_LEVEL, LOG_FILE, LOG_MAX_BYTES, LOG_BACKUP_COUNT
+    
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+    logger.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
 
     if logger.handlers:
         return logger
 
-    formatter = logging.Formatter(format_string, datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(level)
+    console_handler.setLevel(logging.DEBUG)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    log_path = Path(log_file)
-    file_handler = RotatingFileHandler(log_path, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8")
-    file_handler.setLevel(level)
+    log_path = Path(LOG_FILE)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    file_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT,
+        encoding="utf-8"
+    )
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
