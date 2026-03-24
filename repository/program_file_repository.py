@@ -137,6 +137,13 @@ class ProgramFileRepository:
                     connector.copy_work_files(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
 
             if download_generated:
+                # Всегда очищаем папку generated перед скачиванием
+                # чтобы избежать проблем с одинаковыми именами файлов
+                if os.path.exists(robot_dir):
+                    generated_dir = os.path.join(robot_dir, LocalPath.GENERATED_SUBDIR)
+                    if os.path.exists(generated_dir):
+                        shutil.rmtree(generated_dir)
+                
                 connector.get_file_list(RobotProgramPath.GENERATED)
                 connector.copy_generated_files(output_dir=self._base_dir, robot_name=robot_name, process_src=True)
         except Exception as e:
