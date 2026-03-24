@@ -84,10 +84,6 @@ class RobotConnector:
 
         return self._file_list
 
-    @property
-    def file_list(self) -> List[str]:
-        return self._file_list
-
     def _get_dat_files(self) -> List[str]:
         return [f for f in self._file_list if f.endswith('.dat')]
 
@@ -237,7 +233,7 @@ class RobotConnector:
         
         # Сортируем sequence файлы по номеру
         sequence_files.sort(key=lambda x: x[0])
-        
+
         # Возвращаем: sequence файлы + остальные
         return [f for _, f in sequence_files] + other_files
 
@@ -245,5 +241,5 @@ class RobotConnector:
         self.connect()
         return self
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()

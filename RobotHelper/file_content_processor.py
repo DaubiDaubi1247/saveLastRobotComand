@@ -6,10 +6,6 @@ from typing import Dict, List, Set, Tuple
 class FileContentProcessor:
 
     def __init__(self):
-        self._pattern = re.compile(
-            r'\b(?:XS|XW)[A-Z0-9_]*\s*=\s*\{[^}]+\}',
-            re.MULTILINE
-        )
         self._coords_pattern = re.compile(
             r'X\s*(-?\d+\.?\d*),\s*Y\s*(-?\d+\.?\d*),\s*Z\s*(-?\d+\.?\d*)'
         )

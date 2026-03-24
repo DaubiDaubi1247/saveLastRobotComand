@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from typing import List, Optional
 from influxdb import InfluxDBClient
 from config import INFLUX_HOST, INFLUX_PORT, INFLUX_USERNAME, INFLUX_PASSWORD, INFLUX_DATABASE
+from utils.logger import logger
 
 
 @dataclass
 class RobotStateDB:
     robot: str
-    status: Optional[int] = None
-    time: Optional[str] = None
 
 
 @dataclass
@@ -28,40 +27,35 @@ class RobotStateRepository:
         password: str = INFLUX_PASSWORD,
         database: str = INFLUX_DATABASE
     ):
-        self._client = InfluxDBClient(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            database=database
+        self._host = host
+        self._port = port
+        self._username = username
+        self._password = password
+        self._database = database
+        self._client = self._create_client()
+
+    def _create_client(self) -> InfluxDBClient:
+        """Создает новое подключение к InfluxDB."""
+        return InfluxDBClient(
+            host=self._host,
+            port=self._port,
+            username=self._username,
+            password=self._password,
+            database=self._database
         )
 
-    def get_robot_state(self, robot: str) -> Optional[RobotStateDB]:
-        query = f"""
-        SELECT LAST(status) as status, time
-        FROM rob_state
-        WHERE robot = '{robot}' AND status != 0 AND time >= now() - 1m
-        """
-
-        result = self._client.query(query)
-
-        if not result:
-            return None
-
-        for (measurement, tags), points in result.items():
-            point = next(points, None)
-            if point:
-                return RobotStateDB(
-                    robot=robot,
-                    status=point.get('last'),
-                    time=point.get('time')
-                )
-
-        return None
+    def _ensure_connection(self) -> None:
+        """Проверяет и восстанавливает подключение при необходимости."""
+        try:
+            self._client.ping()
+        except Exception as e:
+            logger.warning(f"Потеряно подключение к InfluxDB, переподключение: {e}")
+            self._client = self._create_client()
 
     def get_all_robots_state(self) -> List[RobotStateDB]:
+        self._ensure_connection()
         query = """
-        SELECT LAST(status) as status, time
+        SELECT LAST(status) as status
         FROM rob_state
         WHERE status > 1 AND time >= now() - 1m
         GROUP BY robot
@@ -70,19 +64,15 @@ class RobotStateRepository:
         result = self._client.query(query)
 
         states = []
-        for (measurement, tags), points in result.items():
+        for (_, tags), _ in result.items():
             robot_name = tags.get("robot", "")
-            point = next(points, None)
-            if point:
-                states.append(RobotStateDB(
-                    robot=robot_name,
-                    status=point.get('last'),
-                    time=point.get('time')
-                ))
+            if robot_name:
+                states.append(RobotStateDB(robot=robot_name))
 
         return states
 
     def get_robot_program_info(self, robot: str) -> Optional[RobotProgramDB]:
+        self._ensure_connection()
         query = f"""
         SELECT program_name, snr_c
         FROM program_info
@@ -96,21 +86,17 @@ class RobotStateRepository:
         if not result:
             return None
 
-        for (measurement, tags), points in result.items():
+        for _, points in result.items():
             point = next(points, None)
             if point:
                 program_name = point.get('program_name')
                 snr_c = point.get('snr_c')
 
-                if not program_name:
-                    program_name = None
                 if snr_c is not None:
                     try:
                         snr_c = int(snr_c)
                     except (ValueError, TypeError):
                         snr_c = None
-                else:
-                    snr_c = None
 
                 return RobotProgramDB(
                     robot=robot,

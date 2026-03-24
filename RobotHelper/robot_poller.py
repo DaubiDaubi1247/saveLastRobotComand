@@ -4,7 +4,7 @@ import json
 import socket
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 from telegraf.client import TelegrafClient
 from .robot_connector import request
 from config import POLL_INTERVAL, TELEGRAF_HOST, TELEGRAF_PORT, ROBOTS
@@ -13,14 +13,8 @@ from utils.logger import logger
 
 @dataclass
 class ProgramInfo:
-    name: Optional[str] = None
-    snr: Optional[int] = None
     name_c: Optional[str] = None
     snr_c: Optional[int] = None
-    name_c_trl: Optional[str] = None
-    snr_c_trl: Optional[int] = None
-    i_executed: Optional[bool] = None
-    p_arrived: Optional[int] = None
 
 
 def parse_pro_ip_result(result_str: str) -> ProgramInfo:
@@ -28,24 +22,12 @@ def parse_pro_ip_result(result_str: str) -> ProgramInfo:
     if s.startswith("{PRO_IP:") and s.endswith("}"):
         s = s[8:-1].strip()
 
-    name_match = re.search(r'NAME\[\]\s*"([^"]*)"', s)
-    snr_match = re.search(r'SNR\s+(\d+)', s)
     name_c_match = re.search(r'NAME_C\[\]\s*"([^"]*)"', s)
     snr_c_match = re.search(r'SNR_C\s+(\d+)', s)
-    name_c_trl_match = re.search(r'NAME_C_TRL\[\]\s*"([^"]*)"', s)
-    snr_c_trl_match = re.search(r'SNR_C_TRL\s+(\d+)', s)
-    i_executed_match = re.search(r'I_EXECUTED\s+(TRUE|FALSE)', s, re.IGNORECASE)
-    p_arrived_match = re.search(r'P_ARRIVED\s+(\d+)', s)
 
     return ProgramInfo(
-        name=name_match.group(1) if name_match else None,
-        snr=int(snr_match.group(1)) if snr_match else None,
         name_c=name_c_match.group(1) if name_c_match else None,
         snr_c=int(snr_c_match.group(1)) if snr_c_match else None,
-        name_c_trl=name_c_trl_match.group(1) if name_c_trl_match else None,
-        snr_c_trl=int(snr_c_trl_match.group(1)) if snr_c_trl_match else None,
-        i_executed=i_executed_match.group(1).upper() == "TRUE" if i_executed_match else None,
-        p_arrived=int(p_arrived_match.group(1)) if p_arrived_match else None,
     )
 
 
