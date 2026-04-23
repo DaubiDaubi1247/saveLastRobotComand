@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Union
 
 
 class FileContentProcessor:
@@ -13,7 +13,7 @@ class FileContentProcessor:
         self._decl_pattern = re.compile(r'\bDECL\s+TSg_PCollCD_T\s+(\S+)')
         self._arc_pattern = re.compile(r'\bDECL\s+stArcDat_T\s+')
 
-    def _extract_point_from_line(self, line: str) -> Dict[str, List[float]] | None:
+    def _extract_point_from_line(self, line: str) -> Union[Dict[str, List[float]], None]:
         """Извлекает точку из строки. Возвращает {key: [x, y, z]} или None."""
         line = line.strip()
         coords_match = self._coords_pattern.search(line)

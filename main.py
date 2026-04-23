@@ -13,7 +13,7 @@ from service.robot_points_service import RobotPointsService
 from repository.robot_points_repository import RobotPointsRepository
 from repository.generated_points_repository import GeneratedPointsRepository
 from Api.models.models import RobotStateResponse, RobotProgramResponse
-from config import SERVER_HOST, SERVER_PORT
+from fastapi.middleware.cors import CORSMiddleware
 from utils.logger import logger
 import time
 import traceback
@@ -75,6 +75,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(title="Robot Server", lifespan=lifespan)
 
+origins = [
+    "http://192.168.22.129:8080",  # Адрес, с которого идут запросы
+]
+
+# 2. Добавьте CORSMiddleware в приложение
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          # Разрешаем запросы с этого источника
+    allow_credentials=True,         # Разрешаем передавать куки и заголовки авторизации
+    allow_methods=["*"],            # Разрешаем все HTTP методы (GET, POST и т.д.)
+    allow_headers=["*"],            # Разрешаем все заголовки
+)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
@@ -161,11 +173,3 @@ async def get_robot_points_generated(robot_name: str, service: RobotPointsServic
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-def main() -> None:
-    logger.info(f"Запуск сервера на {SERVER_HOST}:{SERVER_PORT}")
-    uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT, log_level="info")
-
-
-if __name__ == "__main__":
-    main()
